@@ -15,10 +15,10 @@ import org.springframework.validation.annotation.Validated;
 @ConfigurationProperties(prefix = "app.mail")
 public class MailSendingProperties {
 
-    @NotBlank
+
     private String fromAddress;
 
-    @NotBlank
+
     private String brevoApiKey;
 
     @NotBlank
