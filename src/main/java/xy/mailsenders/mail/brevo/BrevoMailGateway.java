@@ -19,8 +19,10 @@ public class BrevoMailGateway implements MailGateway {
     private final RestClient restClient;
     private final MailSendingProperties properties;
 
-    @Value("${app.mail.from-address}")
-    private String defaultSenderEmail;
+
+
+    @Value("${BREVO_API_KEY}")
+    private String keyyy;
 
     public BrevoMailGateway(RestClient.Builder restClientBuilder, MailSendingProperties properties) {
         this.restClient = restClientBuilder
@@ -37,7 +39,7 @@ public class BrevoMailGateway implements MailGateway {
                 .uri("/v3/smtp/email")
                 .contentType(MediaType.APPLICATION_JSON)
                 .header("accept", "application/json")
-                .header("api-key", properties.getBrevoApiKey())
+                .header("api-key", keyyy)
                 .body(request)
                 .retrieve()
                 .toBodilessEntity();
@@ -45,7 +47,7 @@ public class BrevoMailGateway implements MailGateway {
 
     private BrevoSendEmailRequest buildRequest(MailPayload payload) {
         BrevoSendEmailRequest request = new BrevoSendEmailRequest();
-        request.setSender(new BrevoEmailContact(defaultSenderEmail, "admin"));
+        request.setSender(new BrevoEmailContact("jayigboneme@gmail.com", "admin"));
         request.setTo(List.of(new BrevoEmailContact(payload.getTo().trim(), null)));
         request.setSubject(payload.getSubject().trim());
 
