@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Compose Mail</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f3; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 2rem; }
+        .composer { background: #fff; border: 0.5px solid rgba(0,0,0,0.12); border-radius: 14px; overflow: hidden; width: 100%; max-width: 680px; }
+        .composer-header { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; border-bottom: 0.5px solid rgba(0,0,0,0.08); background: #fafaf9; }
+        .header-left { display: flex; align-items: center; gap: 10px; }
+        .avatar { width: 34px; height: 34px; border-radius: 50%; background: #CECBF6; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 500; color: #3C3489; flex-shrink: 0; }
+        .sender-name { font-size: 13px; font-weight: 500; color: #111; }
+        .sender-email { font-size: 11px; color: #888; }
+        .icon-btn { background: transparent; border: none; cursor: pointer; padding: 6px; border-radius: 6px; color: #666; display: flex; align-items: center; }
+        .icon-btn:hover { background: #f0f0ee; }
+        .field-row { display: flex; align-items: center; padding: 11px 18px; border-bottom: 0.5px solid rgba(0,0,0,0.08); gap: 10px; }
+        .field-label { font-size: 12px; color: #999; min-width: 52px; font-weight: 500; letter-spacing: 0.03em; }
+        .tags-area { flex: 1; display: flex; flex-wrap: wrap; gap: 5px; align-items: center; }
+        .tag { display: inline-flex; align-items: center; gap: 4px; background: #EEEDFE; border: 0.5px solid #AFA9EC; border-radius: 20px; padding: 3px 10px; }
+        .tag span { font-size: 12px; color: #3C3489; }
+        .tag-x { cursor: pointer; font-size: 14px; color: #534AB7; line-height: 1; border: none; background: none; padding: 0; }
+        .bare-input { border: none; outline: none; background: transparent; font-size: 13px; color: #111; flex: 1; min-width: 120px; font-family: inherit; }
+        .subject-input { flex: 1; border: none; outline: none; background: transparent; font-size: 15px; font-weight: 500; color: #111; font-family: inherit; width: 100%; }
+        .toolbar { display: flex; align-items: center; gap: 2px; padding: 10px 18px; border-bottom: 0.5px solid rgba(0,0,0,0.08); flex-wrap: wrap; background: #fafaf9; }
+        .tool-btn { background: transparent; border: none; cursor: pointer; padding: 6px 8px; border-radius: 6px; display: flex; align-items: center; gap: 4px; color: #666; font-size: 12px; font-family: inherit; }
+        .tool-btn:hover { background: #f0f0ee; color: #111; }
+        .tool-btn svg { width: 15px; height: 15px; flex-shrink: 0; }
+        .tool-divider { width: 0.5px; height: 18px; background: rgba(0,0,0,0.1); margin: 0 4px; }
+        .body-area { padding: 16px 18px; }
+        .body-editor { width: 100%; min-height: 160px; border: none; outline: none; background: transparent; font-size: 14px; color: #111; line-height: 1.75; font-family: inherit; }
+        .attachments-area { padding: 12px 18px; display: flex; flex-wrap: wrap; gap: 8px; border-bottom: 0.5px solid rgba(0,0,0,0.08); }
+        .attachments-area:empty { display: none; padding: 0; border: none; }
+        .attach-chip { display: flex; align-items: center; gap: 7px; padding: 7px 12px; border-radius: 8px; border: 0.5px solid rgba(0,0,0,0.1); background: #fff; max-width: 220px; }
+        .attach-icon { width: 28px; height: 28px; border-radius: 6px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 10px; font-weight: 500; }
+        .attach-name { font-size: 12px; font-weight: 500; color: #111; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 130px; }
+        .attach-size { font-size: 11px; color: #999; }
+        .attach-remove { margin-left: auto; background: none; border: none; cursor: pointer; color: #999; padding: 2px; font-size: 16px; flex-shrink: 0; }
+        .link-row { display: flex; align-items: center; gap: 8px; padding: 10px 18px; border-bottom: 0.5px solid rgba(0,0,0,0.08); }
+        .link-chip { display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; border-radius: 20px; background: #E6F1FB; border: 0.5px solid #85B7EB; }
+        .link-chip span { font-size: 12px; color: #185FA5; }
+        .footer { display: flex; align-items: center; justify-content: space-between; padding: 12px 18px; background: #fafaf9; flex-wrap: wrap; gap: 10px; }
+        .btn-ghost { font-size: 13px; padding: 8px 14px; border-radius: 8px; border: 0.5px solid rgba(0,0,0,0.15); background: transparent; cursor: pointer; color: #555; font-family: inherit; }
+        .btn-ghost:hover { background: #f0f0ee; }
+        .btn-primary { font-size: 13px; padding: 8px 20px; border-radius: 8px; border: none; background: #111; color: #fff; cursor: pointer; font-weight: 500; display: inline-flex; align-items: center; gap: 7px; font-family: inherit; }
+        .btn-primary:hover { background: #333; }
+        .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+        .char-count { font-size: 11px; color: #aaa; }
+        .progress-bar { height: 2px; background: #eee; display: none; }
+        .progress-fill { height: 100%; width: 0; background: #534AB7; transition: width 0.05s linear; }
+        .alert { padding: 10px 16px; border-radius: 8px; font-size: 13px; display: flex; align-items: center; gap: 8px; margin: 12px 18px 0; }
+        .alert-success { background: #EAF3DE; border: 0.5px solid #97C459; color: #3B6D11; }
+        .alert-error { background: #FCEBEB; border: 0.5px solid #F09595; color: #A32D2D; }
+        .cc-toggle { font-size: 12px; color: #aaa; cursor: pointer; padding: 2px 6px; }
+        .cc-toggle:hover { color: #666; }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+
+<div class="composer">
+
+    <!-- Success Alert -->
+    <div class="alert alert-success hidden" id="alert-success">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+            <circle cx="7" cy="7" r="6" stroke="currentColor" stroke-width="1.2"/>
+            <path d="M4.5 7l2 2 3-3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span id="success-message">Mail sent!</span>
+    </div>
+
+    <!-- Error Alert -->
+    <div class="alert alert-error hidden" id="alert-error">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+            <circle cx="7" cy="7" r="6" stroke="currentColor" stroke-width="1.2"/>
+            <path d="M5 5l4 4M9 5l-4 4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+        </svg>
+        <span id="error-message">Something went wrong.</span>
+    </div>
+
+ <!-- Validation errors will be shown in the error alert above -->
+
+    <form action="#" method="post" id="mail-form">
+
+        <!-- ── Header ──────────────────────────────────────────────────────── -->
+        <div class="composer-header">
+            <div class="header-left">
+                <div class="avatar">AO</div>
+                <div style="display:flex;flex-direction:column;">
+                    <span class="sender-name">Alex Okonkwo</span>
+                    <span class="sender-email">alex@travas.com</span>
+                </div>
+            </div>
+            <div style="display:flex;gap:6px;">
+                <button type="button" class="icon-btn" title="Discard"
+                        onclick="if(confirm('Discard this message?')) window.location.href='./'">
+                    <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
+                        <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- ── To ─────────────────────────────────────────────────────────── -->
+        <div class="field-row">
+            <span class="field-label">To</span>
+            <div class="tags-area" id="to-tags">
+                <input class="bare-input" id="to-input"
+                       placeholder="Add recipient and press Enter…"
+                       autocomplete="off"
+                       onkeydown="addRecipient(event)"/>
+            </div>
+            <!-- Hidden field carries comma-separated recipients to the controller -->
+            <input type="hidden" name="recipientsRaw" id="recipients-hidden" value=""/>
+            <span class="cc-toggle" onclick="toggleCC()">Cc / Bcc</span>
+        </div>
+
+        <!-- ── Cc ─────────────────────────────────────────────────────────── -->
+        <div class="field-row hidden" id="cc-row">
+            <span class="field-label">Cc</span>
+            <input class="bare-input" id="cc-input" name="cc" placeholder="Add cc…"/>
+        </div>
+
+        <!-- ── Bcc ────────────────────────────────────────────────────────── -->
+        <div class="field-row hidden" id="bcc-row">
+            <span class="field-label">Bcc</span>
+            <input class="bare-input" id="bcc-input" name="bcc" placeholder="Add bcc…"/>
+        </div>
+
+        <!-- ── Subject ────────────────────────────────────────────────────── -->
+        <div class="field-row">
+            <span class="field-label">Subject</span>
+            <input class="subject-input" id="subject-input" name="subject" placeholder="Email subject" required/>
+        </div>
+
+        <!-- ── Rich Text Toolbar ──────────────────────────────────────────── -->
+        <div class="toolbar">
+            <button type="button" class="tool-btn" onclick="fmt('bold')" title="Bold">
+                <svg viewBox="0 0 16 16" fill="none">
+                    <path d="M4 3h5a3 3 0 010 6H4V3zM4 9h5.5a3.5 3.5 0 010 7H4V9z"
+                          stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/>
+                </svg>
+            </button>
+            <button type="button" class="tool-btn" onclick="fmt('italic')" title="Italic">
+                <svg viewBox="0 0 16 16" fill="none">
+                    <path d="M6 3h6M4 13h6M9 3l-2 10"
+                          stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+                </svg>
+            </button>
+            <button type="button" class="tool-btn" onclick="fmt('underline')" title="Underline">
+                <svg viewBox="0 0 16 16" fill="none">
+                    <path d="M4 3v5a4 4 0 008 0V3M2 13h12"
+                          stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+                </svg>
+            </button>
+            <div class="tool-divider"></div>
+            <button type="button" class="tool-btn" onclick="fmt('insertUnorderedList')" title="Bullet list">
+                <svg viewBox="0 0 16 16" fill="none">
+                    <circle cx="3" cy="5" r="1.2" fill="currentColor"/>
+                    <circle cx="3" cy="9" r="1.2" fill="currentColor"/>
+                    <circle cx="3" cy="13" r="1.2" fill="currentColor"/>
+                    <path d="M6 5h8M6 9h8M6 13h8" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+                </svg>
+            </button>
+            <button type="button" class="tool-btn" onclick="fmt('insertOrderedList')" title="Numbered list">
+                <svg viewBox="0 0 16 16" fill="none">
+                    <path d="M6 5h8M6 9h8M6 13h8" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+                    <path d="M3 3.5v3M3 3.5H2M2 6.5h2" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/>
+                    <path d="M2 9.5h2l-2 3h2" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </button>
+            <div class="tool-divider"></div>
+            <button type="button" class="tool-btn" onclick="triggerUpload('image/*')" title="Attach image">
+                <svg viewBox="0 0 16 16" fill="none">
+                    <rect x="1.5" y="3" width="13" height="10" rx="1.5" stroke="currentColor" stroke-width="1.3"/>
+                    <circle cx="5.5" cy="6.5" r="1.2" fill="currentColor"/>
+                    <path d="M1.5 10.5l4-3 3 2.5 2-1.5 3 3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <span>Image</span>
+            </button>
+            <button type="button" class="tool-btn" onclick="triggerUpload('video/*')" title="Attach video">
+                <svg viewBox="0 0 16 16" fill="none">
+                    <rect x="1" y="3.5" width="10" height="9" rx="1.5" stroke="currentColor" stroke-width="1.3"/>
+                    <path d="M11 6.5l4-2v7l-4-2V6.5z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/>
+                </svg>
+                <span>Video</span>
+            </button>
+            <button type="button" class="tool-btn" onclick="triggerUpload('.pdf')" title="Attach PDF">
+                <svg viewBox="0 0 16 16" fill="none">
+                    <path d="M3 2h7l3 3v9a1 1 0 01-1 1H3a1 1 0 01-1-1V3a1 1 0 011-1z"
+                          stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/>
+                    <path d="M10 2v4h3" stroke="currentColor" stroke-width="1.3"/>
+                    <path d="M5 9h6M5 11.5h4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+                </svg>
+                <span>PDF</span>
+            </button>
+            <button type="button" class="tool-btn" onclick="triggerUpload('*')" title="Attach any file">
+                <svg viewBox="0 0 16 16" fill="none">
+                    <path d="M4 13.5A3.5 3.5 0 014 6.5l.5-.5M12 2.5A3.5 3.5 0 0112 9.5l-.5.5M6 10l4-4"
+                          stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+                </svg>
+                <span>File</span>
+            </button>
+            <div class="tool-divider"></div>
+            <button type="button" class="tool-btn" onclick="insertLink()" title="Insert link">
+                <svg viewBox="0 0 16 16" fill="none">
+                    <path d="M6 10l-1.5 1.5a2.8 2.8 0 000 4 2.8 2.8 0 004 0L10 14M10 6l1.5-1.5a2.8 2.8 0 000-4 2.8 2.8 0 00-4 0L6 2M9.5 6.5l-3 3"
+                          stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+                </svg>
+                <span>Link</span>
+            </button>
+        </div>
+
+        <!-- ── Body ───────────────────────────────────────────────────────── -->
+        <div class="body-area">
+            <div id="body-editor"
+                 contenteditable="true"
+                 class="body-editor"
+                 oninput="syncBody(); updateCount()">
+            </div>
+            <!-- Hidden textarea synced by JS so the body is submitted with the form -->
+            <textarea name="body" id="body-hidden" style="display:none;"></textarea>
+        </div>
+
+        <!-- ── Attachment chips (JS-rendered previews) ────────────────────── -->
+        <div class="attachments-area" id="attachments-area">
+        </div>
+
+        <!-- ── Actual multipart file input ───────────────────────────────── -->
+        <input type="file" name="attachments" id="file-input"
+               multiple style="display:none" onchange="handleFiles(event)"/>
+
+        <!-- ── Embedded link chip ─────────────────────────────────────────── -->
+        <div class="link-row hidden" id="link-row">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+                <path d="M6 10l-1.5 1.5a2.8 2.8 0 000 4 2.8 2.8 0 004 0L10 14M10 6l1.5-1.5a2.8 2.8 0 000-4 2.8 2.8 0 00-4 0L6 2"
+                      stroke="#185FA5" stroke-width="1.3" stroke-linecap="round"/>
+            </svg>
+            <div class="link-chip">
+                <span id="link-display"></span>
+                <button type="button"
+                        onclick="document.getElementById('link-hidden').value=''; document.getElementById('link-row').classList.add('hidden')"
+                        style="background:none;border:none;cursor:pointer;color:#185FA5;font-size:15px;padding:0;margin-left:4px;">×</button>
+            </div>
+            <input type="hidden" name="embeddedLink" id="link-hidden" value=""/>
+        </div>
+
+        <!-- ── Send progress bar ──────────────────────────────────────────── -->
+        <div class="progress-bar" id="progress-bar">
+            <div class="progress-fill" id="progress-fill"></div>
+        </div>
+
+        <!-- ── Footer ────────────────────────────────────────────────────── -->
+        <div class="footer">
+            <div style="display:flex;align-items:center;gap:8px;">
+                <span class="char-count" id="char-count">0 characters</span>
+                <button type="button" class="btn-ghost" onclick="saveDraft()">
+                    <svg width="13" height="13" viewBox="0 0 16 16" fill="none"
+                         style="display:inline;vertical-align:middle;margin-right:4px;">
+                        <circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.3"/>
+                        <path d="M8 5v3.5l2 2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+                    </svg>
+                    Schedule
+                </button>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;">
+                <button type="button" class="btn-ghost" onclick="saveDraft()">Save draft</button>
+                <button type="submit" class="btn-primary" id="send-btn">
+                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                        <path d="M1 1l12 6-12 6V8.5l9-1.5-9-1.5V1z" fill="currentColor"/>
+                    </svg>
+                    Send
+                </button>
+            </div>
+        </div>
+
+    </form>
+</div>
+
+<script>
+    /* ── Formatting ──────────────────────────────────────────────────────── */
+    function fmt(cmd) {
+        document.getElementById('body-editor').focus();
+        document.execCommand(cmd, false, null);
+        syncBody();
+    }
+
+    /* ── Sync contenteditable → hidden textarea ──────────────────────────── */
+    function syncBody() {
+        document.getElementById('body-hidden').value =
+            document.getElementById('body-editor').innerHTML;
+    }
+
+    /* ── Character counter ───────────────────────────────────────────────── */
+    function updateCount() {
+        const txt = document.getElementById('body-editor').innerText || '';
+        document.getElementById('char-count').textContent = txt.length + ' characters';
+    }
+
+    /* ── Recipient tag input ─────────────────────────────────────────────── */
+    function addRecipient(e) {
+        if ((e.key === 'Enter' || e.key === ',') && e.target.value.trim()) {
+            e.preventDefault();
+            const val = e.target.value.trim().replace(/,$/, '');
+            const container = document.getElementById('to-tags');
+            const tag = document.createElement('span');
+            tag.className = 'tag';
+            tag.innerHTML = '<span>' + val + '</span>'
+                + '<button type="button" class="tag-x" '
+                + 'onclick="this.closest(\'.tag\').remove(); syncRecipients()">×</button>';
+            container.insertBefore(tag, e.target);
+            e.target.value = '';
+            syncRecipients();
+        }
+    }
+
+    /* ── Sync tag pills → hidden input ───────────────────────────────────── */
+    function syncRecipients() {
+        const spans = document.querySelectorAll('#to-tags .tag span:first-child');
+        const pending = document.getElementById('to-input').value.trim();
+        let values = Array.from(spans).map(s => s.textContent);
+        if (pending) values.push(pending);
+        document.getElementById('recipients-hidden').value = values.join(',');
+    }
+
+    /* ── Show/hide Cc & Bcc rows ─────────────────────────────────────────── */
+    function toggleCC() {
+        ['cc-row', 'bcc-row'].forEach(id => {
+            document.getElementById(id).classList.toggle('hidden');
+        });
+    }
+
+    /* ── Trigger file picker ─────────────────────────────────────────────── */
+    const selectedFiles = [];
+
+    function triggerUpload(accept) {
+        const fi = document.getElementById('file-input');
+        fi.accept = accept;
+        fi.click();
+    }
+
+    /* ── Render attachment chips after file selection ────────────────────── */
+    function handleFiles(e) {
+        const area = document.getElementById('attachments-area');
+        Array.from(e.target.files).forEach(function(file) {
+            selectedFiles.push(file);
+            const ext = file.name.split('.').pop().toLowerCase();
+            const isImg = ['jpg','jpeg','png','gif','webp','svg'].includes(ext);
+            const isVid = ['mp4','mov','avi','webm','mkv'].includes(ext);
+            const isPdf = ext === 'pdf';
+            let bg = '#F1EFE8', color = '#444441';
+            if (isImg) { bg = '#EAF3DE'; color = '#3B6D11'; }
+            if (isVid) { bg = '#EEEDFE'; color = '#3C3489'; }
+            if (isPdf) { bg = '#FCEBEB'; color = '#A32D2D'; }
+            const size = file.size < 1024 * 1024
+                ? Math.round(file.size / 1024) + ' KB'
+                : (file.size / (1024 * 1024)).toFixed(1) + ' MB';
+            const chip = document.createElement('div');
+            chip.className = 'attach-chip';
+            chip.dataset.name = file.name;
+            chip.innerHTML =
+                '<div class="attach-icon" style="background:' + bg + ';color:' + color + ';">'
+                + ext.toUpperCase() + '</div>'
+                + '<div><div class="attach-name">' + file.name + '</div>'
+                + '<div class="attach-size">' + size + '</div></div>'
+                + '<button type="button" class="attach-remove" onclick="removeFile(this)">×</button>';
+            area.appendChild(chip);
+        });
+    }
+
+    function removeFile(btn) {
+        const chip = btn.closest('.attach-chip');
+        const name = chip.dataset.name;
+        const idx = selectedFiles.findIndex(f => f.name === name);
+        if (idx > -1) selectedFiles.splice(idx, 1);
+        chip.remove();
+    }
+
+    /* ── Insert link chip ────────────────────────────────────────────────── */
+    function insertLink() {
+        const url = prompt('Paste a URL:');
+        if (!url) return;
+        document.getElementById('link-hidden').value = url;
+        document.getElementById('link-display').textContent =
+            url.replace(/^https?:\/\//, '').split('/').slice(0, 2).join('/');
+        document.getElementById('link-row').classList.remove('hidden');
+    }
+
+    /* ── Helper: File to Base64 ──────────────────────────────────────────── */
+    function readFileAsBase64(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result.split(',')[1]);
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+        });
+    }
+
+    /* ── On submit: sync fields + fetch API ──────────────────────── */
+    document.getElementById('mail-form').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        syncBody();
+        syncRecipients();
+
+        const btn = document.getElementById('send-btn');
+        const recipients = document.getElementById('recipients-hidden').value.split(',').filter(r => r.trim());
+        const subject = document.getElementById('subject-input').value;
+        const body = document.getElementById('body-hidden').value;
+
+        // Reset alerts
+        document.getElementById('alert-success').classList.add('hidden');
+        document.getElementById('alert-error').classList.add('hidden');
+
+        if (recipients.length === 0) {
+            document.getElementById('error-message').textContent = 'Please add at least one recipient.';
+            document.getElementById('alert-error').classList.remove('hidden');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            return;
+        }
+
+        btn.disabled = true;
+        btn.innerHTML = 'Sending…';
+
+        const bar = document.getElementById('progress-bar');
+        const fill = document.getElementById('progress-fill');
+        bar.style.display = 'block';
+        let w = 0;
+        const iv = setInterval(() => {
+            w += Math.random() * 5;
+            if (w >= 90) w = 90;
+            fill.style.width = Math.round(w) + '%';
+        }, 100);
+
+        try {
+            // Prepare attachments
+            const attachments = await Promise.all(selectedFiles.map(async (file) => ({
+                fileName: file.name,
+                contentType: file.type,
+                base64Content: await readFileAsBase64(file)
+            })));
+
+            // Construct payload: one MailPayload per recipient
+            const mails = recipients.map(to => ({
+                to: to.trim(),
+                subject: subject,
+                body: body,
+                html: true,
+                attachments: attachments
+            }));
+
+            const response = await fetch('/api/mails/send', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ mails: mails })
+            });
+
+            const result = await response.json().catch(() => ({}));
+            clearInterval(iv);
+            fill.style.width = '100%';
+
+            if (response.ok) {
+                document.getElementById('alert-success').classList.remove('hidden');
+                document.getElementById('alert-error').classList.add('hidden');
+                btn.disabled = false;
+                btn.innerHTML = 'Send';
+            } else {
+                document.getElementById('error-message').textContent = result.error || 'Failed to send mail';
+                document.getElementById('alert-error').classList.remove('hidden');
+                btn.disabled = false;
+                btn.innerHTML = 'Send';
+            }
+        } catch (err) {
+            clearInterval(iv);
+            console.error(err);
+            document.getElementById('error-message').textContent = 'An unexpected error occurred.';
+            document.getElementById('alert-error').classList.remove('hidden');
+            btn.disabled = false;
+            btn.innerHTML = 'Send';
+        }
+    });
+
+    /* ── Init ────────────────────────────────────────────────────────────── */
+    updateCount();
+
+
+</script>
+</body>
+</html>
