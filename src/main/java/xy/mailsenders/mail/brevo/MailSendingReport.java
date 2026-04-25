@@ -5,6 +5,7 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.util.List;
+
 @Getter
 @Setter
 @AllArgsConstructor
@@ -14,6 +15,7 @@ public class MailSendingReport {
     private int failureCount;
     private List<String> successfulEmails;
     private List<String> failedEmails;
+    private String message;
 
 
 }
