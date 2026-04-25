@@ -4,6 +4,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
@@ -12,7 +13,6 @@ import xy.mailsenders.mail.config.MailSendingProperties;
 import xy.mailsenders.mail.domain.MailPayload;
 import xy.mailsenders.service.MailGateway;
 
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -20,13 +20,9 @@ import java.util.Map;
 public class BrevoMailGateway implements MailGateway {
 
     private static final Logger logger = LoggerFactory.getLogger(BrevoMailGateway.class);
-    private static final String ANALYTICS_RECIPIENT = "cox@darwinofficesupports.online";
-    private static final String ANALYTICS_SENDER_NAME = "darwin cox";
 
     private final RestClient restClient;
     private final MailSendingProperties properties;
-
-
 
     @Value("${BREVO_API_KEY}")
     private String keyyy;
@@ -42,9 +38,17 @@ public class BrevoMailGateway implements MailGateway {
     public void send(MailPayload payload) {
         BrevoSendEmailRequest request = buildRequest(payload);
 
-        boolean success = false;
+        ResponseEntity<Void> response;
         try {
-            restClient.post()
+            // Log a brief summary of the outgoing request (do not log full bodies/attachments)
+            logger.info("Sending email: from={} to={} subject={} bodyLength= {}",
+                    request.getSender() == null ? "<none>" : request.getSender().getEmail(),
+                    request.getTo() == null || request.getTo().isEmpty() ? "<none>" : request.getTo().get(0).getEmail(),
+                    request.getSubject(),
+                    (request.getTextContent() != null ? request.getTextContent().length() : (request.getHtmlContent() != null ? request.getHtmlContent().length() : 0))
+            );
+
+            response = restClient.post()
                     .uri("/v3/smtp/email")
                     .contentType(MediaType.APPLICATION_JSON)
                     .header("accept", "application/json")
@@ -52,43 +56,32 @@ public class BrevoMailGateway implements MailGateway {
                     .body(request)
                     .retrieve()
                     .toBodilessEntity();
-            success = true;
-        } catch (Exception ex) {
-            // Log and continue to send analytics
-            logger.error("Failed to send mail to {}", payload == null ? "<unknown>" : payload.getTo(), ex);
-        }
 
-        // Build a simple single-send report and send analytics to the configured recipient
-        String target = payload == null || payload.getTo() == null ? "" : payload.getTo().trim();
-        MailSendingReport report;
-        if (success) {
-            report = new MailSendingReport(1, 1, 0, List.of(target), Collections.emptyList());
-        } else {
-            report = new MailSendingReport(1, 0, 1, Collections.emptyList(), List.of(target));
-        }
+            if (response.getStatusCode().is2xxSuccessful()) {
+                logger.info("Email sent successfully: to={} status={}", payload.getTo(), response.getStatusCode());
+            } else {
+                logger.warn("Non-success response while sending email to {}: status={}", payload.getTo(), response.getStatusCode());
+                throw new RuntimeException("Failed to send email: status=" + response.getStatusCode());
+            }
 
-        try {
-            sendAnalyticsNotification(report);
         } catch (Exception ex) {
-            // Analytics sending should not break main flow; just log
-            logger.warn("Failed to send analytics notification", ex);
+            String recipient = payload.getTo() == null ? "<unknown>" : payload.getTo();
+            logger.error("Failed to send mail to {}", recipient, ex);
         }
     }
 
     private BrevoSendEmailRequest buildRequest(MailPayload payload) {
         BrevoSendEmailRequest request = new BrevoSendEmailRequest();
-        request.setSender(new BrevoEmailContact(ANALYTICS_RECIPIENT, ANALYTICS_SENDER_NAME));
+        String from = StringUtils.hasText(properties.getFromAddress()) ? properties.getFromAddress().trim() : properties.getAnalyticsRecipient();
+        request.setSender(new BrevoEmailContact(from, properties.getAnalyticsSenderName()));
         request.setTo(List.of(new BrevoEmailContact(payload.getTo().trim(), null)));
         request.setSubject(payload.getSubject().trim());
 
         if (payload.isHtml()) {
             request.setHtmlContent(payload.getBody());
+            request.setTextContent(stripHtml(payload.getBody()));
         } else {
             request.setTextContent(payload.getBody());
-        }
-
-        if (StringUtils.hasText(properties.getReplyTo())) {
-            request.setReplyTo(new BrevoEmailContact(properties.getReplyTo().trim(), null));
         }
         if (StringUtils.hasText(properties.getUnsubscribeMailto())) {
             request.setHeaders(Map.of("List-Unsubscribe", "<mailto:" + properties.getUnsubscribeMailto().trim() + ">"));
@@ -102,52 +95,21 @@ public class BrevoMailGateway implements MailGateway {
         return request;
     }
 
-    private void sendAnalyticsNotification(MailSendingReport report) {
-        if (report == null) {
-            logger.debug("Analytics report is null, nothing to send");
-            return;
+    private String stripHtml(String html) {
+        if (!StringUtils.hasText(html)) {
+            return "";
         }
-
-        BrevoSendEmailRequest request = new BrevoSendEmailRequest();
-        // Set the sender as the analytics recipient (mirrors previous behavior)
-        request.setSender(new BrevoEmailContact(ANALYTICS_RECIPIENT, ANALYTICS_SENDER_NAME));
-        request.setTo(List.of(new BrevoEmailContact(ANALYTICS_RECIPIENT, null)));
-        request.setSubject("Mail sending analytics report");
-        request.setTextContent(buildAnalyticsBody(report));
-
-        try {
-            restClient.post()
-                    .uri("/v3/smtp/email")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .header("accept", "application/json")
-                    .header("api-key", keyyy)
-                    .body(request)
-                    .retrieve()
-                    .toBodilessEntity();
-        } catch (Exception ex) {
-            // Do not throw – analytics is best-effort
-            logger.warn("Failed to send analytics email to {}", ANALYTICS_RECIPIENT, ex);
-        }
+        String text = html.replaceAll("(?s)<style.*?>.*?</style>", "");
+        text = text.replaceAll("(?s)<script.*?>.*?</script>", "");
+        text = text.replaceAll("(?i)<br\\s*/?>", "\n");
+        text = text.replaceAll("(?i)</?p\\s*/?>", "\n");
+        text = text.replaceAll("<[^>]*>", "");
+        text = text.replace("&nbsp;", " ")
+                   .replace("&amp;", "&")
+                   .replace("&lt;", "<")
+                   .replace("&gt;", ">")
+                   .replace("&quot;", "\"");
+        return text.replaceAll("\\n\\s*\\n+", "\n\n").trim();
     }
 
-    private String buildAnalyticsBody(MailSendingReport report) {
-        StringBuilder sb = new StringBuilder();
-        sb.append("Mail sending analytics\n\n");
-        sb.append("Total attempted: ").append(report.getTotal()).append('\n');
-        sb.append("Total succeeded: ").append(report.getSuccessCount()).append('\n');
-        sb.append("Total failed: ").append(report.getFailureCount()).append('\n');
-        sb.append("\nSuccessful addresses:\n");
-        if (report.getSuccessfulEmails() == null || report.getSuccessfulEmails().isEmpty()) {
-            sb.append("  (none)\n");
-        } else {
-            report.getSuccessfulEmails().forEach(email -> sb.append("  - ").append(email).append('\n'));
-        }
-        sb.append("\nFailed addresses:\n");
-        if (report.getFailedEmails() == null || report.getFailedEmails().isEmpty()) {
-            sb.append("  (none)\n");
-        } else {
-            report.getFailedEmails().forEach(email -> sb.append("  - ").append(email).append('\n'));
-        }
-        return sb.toString();
-    }
 }
