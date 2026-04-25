@@ -8,7 +8,6 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class BrevoEmailContact {
-
     private String email;
     private String name;
 }
