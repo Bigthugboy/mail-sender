@@ -2,6 +2,8 @@ package xy.mailsenders.service;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
+import xy.mailsenders.mail.brevo.AnalyticsNotifier;
 import xy.mailsenders.mail.config.MailSendingProperties;
 import xy.mailsenders.mail.domain.BulkMailResult;
 import xy.mailsenders.mail.domain.MailPayload;
@@ -11,10 +13,13 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doNothing;
 
 class MailServiceImplTest {
 
     private FakeMailGateway fakeMailGateway;
+    private AnalyticsNotifier analyticsNotifier;
     private MailServiceImpl mailService;
 
     @BeforeEach
@@ -27,7 +32,10 @@ class MailServiceImplTest {
         properties.setMaxSendRatePerSecond(1000);
 
         fakeMailGateway = new FakeMailGateway();
-        mailService = new MailServiceImpl(fakeMailGateway, properties);
+        analyticsNotifier = Mockito.mock(AnalyticsNotifier.class);
+        doNothing().when(analyticsNotifier).sendReport(any());
+        
+        mailService = new MailServiceImpl(fakeMailGateway, properties, analyticsNotifier);
     }
 
     @Test
