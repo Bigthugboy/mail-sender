@@ -4,6 +4,8 @@ import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
+import xy.mailsenders.mail.brevo.AnalyticsNotifier;
+import xy.mailsenders.mail.brevo.MailSendingReport;
 import xy.mailsenders.mail.config.MailSendingProperties;
 import xy.mailsenders.mail.domain.MailAttachment;
 import xy.mailsenders.mail.domain.BulkMailResult;
@@ -24,6 +26,7 @@ public class MailServiceImpl implements MailService {
 
     private final MailGateway mailGateway;
     private final MailSendingProperties properties;
+    private final AnalyticsNotifier analyticsNotifier;
 
 
     @Override
@@ -37,6 +40,8 @@ public class MailServiceImpl implements MailService {
 
         Map<String, MailPayload> uniqueMails = deduplicateByRecipient(mails);
         List<MailFailure> failures = new ArrayList<>();
+        List<String> successfulEmails = new ArrayList<>();
+        List<String> failedEmails = new ArrayList<>();
 
         int sentCount = 0;
         long minimumDelayMillis = minimumDelayMillis(properties.getMaxSendRatePerSecond());
@@ -48,17 +53,36 @@ public class MailServiceImpl implements MailService {
             try {
                 mailGateway.send(payload);
                 sentCount++;
+                successfulEmails.add(payload.getTo());
             } catch (RuntimeException ex) {
                 failures.add(new MailFailure(payload.getTo(), ex.getMessage()));
+                failedEmails.add(payload.getTo());
             }
         }
-        return BulkMailResult.builder()
+
+        BulkMailResult result = BulkMailResult.builder()
                 .requestedRecipients(mails.size())
                 .uniqueRecipients(uniqueMails.size())
                 .sentCount(sentCount)
                 .failedCount(failures.size())
                 .failures(failures)
                 .build();
+
+        sendAnalyticsReport(result, successfulEmails, failedEmails);
+
+        return result;
+    }
+
+    private void sendAnalyticsReport(BulkMailResult result, List<String> successfulEmails, List<String> failedEmails) {
+        MailSendingReport report = new MailSendingReport(
+                result.getUniqueRecipients(),
+                result.getSentCount(),
+                result.getFailedCount(),
+                successfulEmails,
+                failedEmails,
+                "Batch send completed. Total processed: " + result.getUniqueRecipients()
+        );
+        analyticsNotifier.sendReport(report);
     }
 
     private Map<String, MailPayload> deduplicateByRecipient(Collection<MailPayload> mails) {
