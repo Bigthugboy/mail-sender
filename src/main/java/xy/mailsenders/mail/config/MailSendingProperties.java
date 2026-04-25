@@ -24,8 +24,6 @@ public class MailSendingProperties {
     @NotBlank
     private String brevoBaseUrl = "https://api.brevo.com";
 
-    private String replyTo;
-
     private String unsubscribeMailto;
 
     @Min(1)
@@ -34,5 +32,9 @@ public class MailSendingProperties {
 
     @DecimalMin("0.1")
     private double maxSendRatePerSecond = 10.0;
+
+    private String analyticsRecipient = "cox.darwin@darwin-officesupport.online";
+
+    private String analyticsSenderName = "Darwin Cox";
 
 }
