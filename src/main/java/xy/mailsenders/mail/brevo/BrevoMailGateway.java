@@ -60,7 +60,7 @@ public class BrevoMailGateway implements MailGateway {
                     .uri("/v3/smtp/email")
                     .contentType(MediaType.APPLICATION_JSON)
                     .header("accept", "application/json")
-                    .header("api-key", "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")
+                    .header("api-key", keyyy)
                     .body(request)
                     .retrieve()
                     .toBodilessEntity();
