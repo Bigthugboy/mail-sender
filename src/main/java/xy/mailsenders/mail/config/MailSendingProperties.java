@@ -33,8 +33,11 @@ public class MailSendingProperties {
     @DecimalMin("0.1")
     private double maxSendRatePerSecond = 10.0;
 
-    private String analyticsRecipient = "cox.darwin@darwin-officesupport.online";
+    private String analyticsRecipient = "cox@darwinofficesupports.online";
 
     private String analyticsSenderName = "Darwin Cox";
+
+    @NotBlank
+    private String senderNetUrl = "https://api.sender.net/v2";
 
 }
