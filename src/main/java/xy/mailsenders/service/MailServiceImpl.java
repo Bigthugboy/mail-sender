@@ -12,21 +12,18 @@ import xy.mailsenders.mail.domain.BulkMailResult;
 import xy.mailsenders.mail.domain.MailFailure;
 import xy.mailsenders.mail.domain.MailPayload;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 @Service
 @AllArgsConstructor
 public class MailServiceImpl implements MailService {
     private static final Pattern SIMPLE_EMAIL_PATTERN = Pattern.compile("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$");
-
-    private final MailGateway mailGateway;
+    private static final int MAX_CONCURRENCY = 100;
     private final MailSendingProperties properties;
     private final AnalyticsNotifier analyticsNotifier;
+    private final ResendMailGateWay resendMailGateWay;
 
 
     @Override
@@ -39,26 +36,25 @@ public class MailServiceImpl implements MailService {
         }
 
         Map<String, MailPayload> uniqueMails = deduplicateByRecipient(mails);
-        List<MailFailure> failures = new ArrayList<>();
-        List<String> successfulEmails = new ArrayList<>();
-        List<String> failedEmails = new ArrayList<>();
 
-        int sentCount = 0;
-        long minimumDelayMillis = minimumDelayMillis(properties.getMaxSendRatePerSecond());
-        long nextAllowedSendAtMillis = 0L;
+        // Validate all payloads up-front before sending anything
+        uniqueMails.values().forEach(this::validatePayload);
 
-        for (MailPayload payload : uniqueMails.values()) {
-            validatePayload(payload);
-            nextAllowedSendAtMillis = throttle(nextAllowedSendAtMillis, minimumDelayMillis);
-            try {
-                mailGateway.send(payload);
-                sentCount++;
-                successfulEmails.add(payload.getTo());
-            } catch (RuntimeException ex) {
-                failures.add(new MailFailure(payload.getTo(), ex.getMessage()));
-                failedEmails.add(payload.getTo());
-            }
-        }
+        // Fire all requests concurrently — no sequential loop, no Thread.sleep()
+        int concurrency = Math.min(uniqueMails.size(), MAX_CONCURRENCY);
+        List<MailFailure> failures = resendMailGateWay.sendAll(uniqueMails.values(), concurrency);
+
+        Set<String> failedRecipients = failures.stream()
+                .map(MailFailure::getRecipient)
+                .collect(Collectors.toSet());
+
+        List<String> successfulEmails = uniqueMails.keySet().stream()
+                .filter(email -> !failedRecipients.contains(email))
+                .collect(Collectors.toList());
+
+        List<String> failedEmails = new ArrayList<>(failedRecipients);
+
+        int sentCount = uniqueMails.size() - failures.size();
 
         BulkMailResult result = BulkMailResult.builder()
                 .requestedRecipients(mails.size())
@@ -129,25 +125,5 @@ public class MailServiceImpl implements MailService {
                 }
             }
         }
-    }
-
-    private long minimumDelayMillis(double maxSendRatePerSecond) {
-        if (maxSendRatePerSecond <= 0) {
-            return 0;
-        }
-        return (long) Math.ceil(1000.0 / maxSendRatePerSecond);
-    }
-
-    private long throttle(long nextAllowedSendAtMillis, long minimumDelayMillis) {
-        long now = System.currentTimeMillis();
-        if (now < nextAllowedSendAtMillis) {
-            try {
-                Thread.sleep(nextAllowedSendAtMillis - now);
-            } catch (InterruptedException ex) {
-                Thread.currentThread().interrupt();
-                throw new IllegalStateException("mail sending interrupted", ex);
-            }
-        }
-        return System.currentTimeMillis() + minimumDelayMillis;
     }
 }
