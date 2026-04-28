@@ -2,27 +2,21 @@ package xy.mailsenders.mail.brevo;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
-import org.springframework.util.StringUtils;
-import org.springframework.web.client.RestClient;
 import xy.mailsenders.mail.config.MailSendingProperties;
+import xy.mailsenders.mail.domain.MailPayload;
+import xy.mailsenders.service.ResendMailGateWay;
 
 
 @Service
 public class AnalyticsNotifier {
 
     private static final Logger logger = LoggerFactory.getLogger(AnalyticsNotifier.class);
-    private final RestClient restClient;
+    private final ResendMailGateWay mailGateWay;
     private final MailSendingProperties properties;
 
-    @Value("${BREVO_API_KEY:}")
-    private String keyyy;
-
-    public AnalyticsNotifier(RestClient.Builder restClientBuilder, MailSendingProperties properties) {
-        this.restClient = restClientBuilder.baseUrl(properties.getBrevoBaseUrl()).build();
+    public AnalyticsNotifier(ResendMailGateWay mailGateWay, MailSendingProperties properties) {
+        this.mailGateWay = mailGateWay;
         this.properties = properties;
     }
 
@@ -32,58 +26,18 @@ public class AnalyticsNotifier {
             return;
         }
 
-        BrevoSendEmailRequest req = new BrevoSendEmailRequest();
-        String from = resolveFromAddress();
-        req.setSender(new BrevoEmailContact(from, properties.getAnalyticsSenderName()));
-        req.setTo(java.util.List.of(new BrevoEmailContact(properties.getAnalyticsRecipient(), null)));
+        MailPayload req = new MailPayload();
+        req.setTo(properties.getAnalyticsRecipient());
         req.setSubject("Mail Sending Analytics Report");
-        req.setTextContent(buildAnalyticsBody(report));
-        req.setHtmlContent(buildAnalyticsHtml(report));
+        req.setBody(buildAnalyticsHtml(report));
+        req.setHtml(true);
 
         try {
-            String apiKey = resolveApiKey();
-            if (!StringUtils.hasText(apiKey)) {
-                logger.warn("No Brevo API key configured; analytics send will likely fail");
-            }
-
-            ResponseEntity<Void> response = restClient.post()
-                    .uri("/v3/smtp/email")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .header("accept", "application/json")
-                    .header("api-key", apiKey == null ? "" : apiKey)
-                    .body(req)
-                    .retrieve()
-                    .toBodilessEntity();
-
-            logger.info("Analytics email body:\n{}", req.getTextContent());
+            mailGateWay.send(req);
+            logger.info("Analytics email report sent to {}", properties.getAnalyticsRecipient());
         } catch (Exception ex) {
             logger.warn("Failed to send analytics email to {}", properties.getAnalyticsRecipient(), ex);
         }
-    }
-
-    private String resolveApiKey() {
-        if (StringUtils.hasText(properties.getBrevoApiKey())) {
-            return properties.getBrevoApiKey().trim();
-        }
-        String env = System.getenv("BREVO_API_KEY");
-        if (StringUtils.hasText(env)) {
-            return env.trim();
-        }
-        if (StringUtils.hasText(keyyy) && !keyyy.startsWith("{")) {
-            return keyyy.trim();
-        }
-        return null;
-    }
-
-    private String resolveFromAddress() {
-        if (StringUtils.hasText(properties.getFromAddress())) {
-            return properties.getFromAddress().trim();
-        }
-        String env = System.getenv("FROM_EMAIL");
-        if (StringUtils.hasText(env)) {
-            return env.trim();
-        }
-        return properties.getAnalyticsRecipient();
     }
 
     private String buildAnalyticsBody(MailSendingReport report) {
