@@ -4,26 +4,33 @@ import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
-import xy.mailsenders.mail.brevo.AnalyticsNotifier;
 import xy.mailsenders.mail.brevo.MailSendingReport;
 import xy.mailsenders.mail.config.MailSendingProperties;
 import xy.mailsenders.mail.domain.MailAttachment;
 import xy.mailsenders.mail.domain.BulkMailResult;
 import xy.mailsenders.mail.domain.MailFailure;
 import xy.mailsenders.mail.domain.MailPayload;
+import xy.mailsenders.mail.resend.ResendMailGatewayImpl;
+import xy.mailsenders.mail.smtp.SmtpProxyMailGateway;
+import xy.mailsenders.mail.brevo.BrevoMailGateway;
+import xy.mailsenders.service.MailGateway;
+import lombok.extern.slf4j.Slf4j;
 
 import java.util.*;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @AllArgsConstructor
 public class MailServiceImpl implements MailService {
     private static final Pattern SIMPLE_EMAIL_PATTERN = Pattern.compile("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$");
     private static final int MAX_CONCURRENCY = 100;
     private final MailSendingProperties properties;
-    private final AnalyticsNotifier analyticsNotifier;
-    private final ResendMailGateWay resendMailGateWay;
+   // private final AnalyticsNotifier analyticsNotifier;
+    private final ResendMailGatewayImpl resendMailGateway;
+    private final BrevoMailGateway brevoMailGateway;
+    private final SmtpProxyMailGateway smtpProxyMailGateway;
 
 
     @Override
@@ -40,9 +47,13 @@ public class MailServiceImpl implements MailService {
         // Validate all payloads up-front before sending anything
         uniqueMails.values().forEach(this::validatePayload);
 
-        // Fire all requests concurrently — no sequential loop, no Thread.sleep()
+        // Resolve which gateway to use based on env flags
+        MailGateway activeGateway = resolveGateway();
+        log.info("Using mail gateway: {}", activeGateway.getClass().getSimpleName());
+
+        // Fire all requests concurrently
         int concurrency = Math.min(uniqueMails.size(), MAX_CONCURRENCY);
-        List<MailFailure> failures = resendMailGateWay.sendAll(uniqueMails.values(), concurrency);
+        List<MailFailure> failures = activeGateway.sendAll(uniqueMails.values(), concurrency);
 
         Set<String> failedRecipients = failures.stream()
                 .map(MailFailure::getRecipient)
@@ -64,22 +75,22 @@ public class MailServiceImpl implements MailService {
                 .failures(failures)
                 .build();
 
-        sendAnalyticsReport(result, successfulEmails, failedEmails);
+        //sendAnalyticsReport(result, successfulEmails, failedEmails);
 
         return result;
     }
 
-    private void sendAnalyticsReport(BulkMailResult result, List<String> successfulEmails, List<String> failedEmails) {
-        MailSendingReport report = new MailSendingReport(
-                result.getUniqueRecipients(),
-                result.getSentCount(),
-                result.getFailedCount(),
-                successfulEmails,
-                failedEmails,
-                "Batch send completed. Total processed: " + result.getUniqueRecipients()
-        );
-        analyticsNotifier.sendReport(report);
-    }
+//    private void sendAnalyticsReport(BulkMailResult result, List<String> successfulEmails, List<String> failedEmails) {
+//        MailSendingReport report = new MailSendingReport(
+//                result.getUniqueRecipients(),
+//                result.getSentCount(),
+//                result.getFailedCount(),
+//                successfulEmails,
+//                failedEmails,
+//                "Batch send completed. Total processed: " + result.getUniqueRecipients()
+//        );
+//        analyticsNotifier.sendReport(report);
+//    }
 
     private Map<String, MailPayload> deduplicateByRecipient(Collection<MailPayload> mails) {
         Map<String, MailPayload> deduplicated = new LinkedHashMap<>();
@@ -125,5 +136,26 @@ public class MailServiceImpl implements MailService {
                 }
             }
         }
+    }
+
+    private MailGateway resolveGateway() {
+        // Priority: Brevo API -> Resend API -> SMTP (with variants)
+        
+        if (properties.isUseBrevoOnly() || properties.isUseBrevoWithApiKey()) {
+            return brevoMailGateway;
+        }
+        
+        if (properties.isUseResendWithApiKey()) {
+            return resendMailGateway;
+        }
+        
+        if (properties.isUseBrevoWithSmtp() || properties.isUseResendWithSmtp() || 
+            properties.isUseSendgridWithSmtp() || properties.isUseSmtpWithProxy() || 
+            properties.isUseSmtpOnly()) {
+            return smtpProxyMailGateway;
+        }
+
+        // Default fallback (legacy behavior)
+        return smtpProxyMailGateway;
     }
 }
