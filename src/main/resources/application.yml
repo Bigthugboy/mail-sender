@@ -1,0 +1,103 @@
+# =============================================================================
+# application.yml — Multi-server SMTP configuration (MODE 3)
+#
+# This file is used when you want to rotate between multiple SMTP servers,
+# each with its own optional proxy. Remove or empty the 'servers' list to
+# fall back to the single-server config in application.properties.
+# =============================================================================
+
+app:
+  mail:
+    smtp:
+      enabled: true
+
+      # Global timeouts — used if a server doesn't set its own
+      connection-timeout-ms: 15000
+      read-timeout-ms: 30000
+      write-timeout-ms: 30000
+
+      # =======================================================================
+      # Multi-server pool — round-robin rotation
+      # Email 1 → servers[0], Email 2 → servers[1], etc.
+      #
+      # Each server:
+      #   name         — label shown in logs
+      #   host         — SMTP hostname
+      #   port         — 587 (STARTTLS) or 465 (SSL)
+      #   username     — SMTP login
+      #   password     — SMTP password / key
+      #   use-ssl      — true for port 465, false for 587 (STARTTLS)
+      #   proxy-host   — leave blank for DIRECT connection (no proxy)
+      #   proxy-port   — proxy port
+      #   proxy-type   — SOCKS5 or HTTP
+      #   proxy-username / proxy-password — proxy credentials (if required)
+      # =======================================================================
+      servers:
+
+        # -------------------------------------------------------------------
+        # Server 1: Brevo SMTP + Webshare SOCKS5 proxy
+        # -------------------------------------------------------------------
+        - name: brevo-proxy
+          host: smtp-relay.brevo.com
+          port: 587
+          username: ${SMTP_USERNAME:aa1ac7001@smtp-brevo.com}
+          password: ${SMTP_PASSWORD:xsmtpsib-bc3e974e7cd1b29e51b13f58c45b6849f9bef60259010ecf666cfe41e8110e81-7dsaal6erhHAlSrU}
+          use-ssl: false
+          proxy-host: ${PROXY_1_HOST:216.10.27.159}
+          proxy-port: ${PROXY_1_PORT:6837}
+          proxy-type: SOCKS5
+          proxy-username: ${PROXY_1_USER:mailServer}
+          proxy-password: ${PROXY_1_PASS:Rapilomme}
+
+        # -------------------------------------------------------------------
+        # Server 2: Brevo SMTP — NO proxy (direct connection)
+        # Just leave proxy-host blank or remove the proxy-* lines entirely
+        # -------------------------------------------------------------------
+        - name: brevo-direct
+          host: smtp-relay.brevo.com
+          port: 587
+          username: ${SMTP_USERNAME:aa1ac7001@smtp-brevo.com}
+          password: ${SMTP_PASSWORD:xsmtpsib-bc3e974e7cd1b29e51b13f58c45b6849f9bef60259010ecf666cfe41e8110e81-7dsaal6erhHAlSrU}
+          use-ssl: false
+          # proxy-host intentionally blank = direct connection
+
+        # -------------------------------------------------------------------
+        # Server 3: Gmail SMTP + proxy
+        # Requires an App Password (Google Account → Security → App Passwords)
+        # -------------------------------------------------------------------
+        # - name: gmail-proxy
+        #   host: smtp.gmail.com
+        #   port: 587
+        #   username: ${GMAIL_USER:you@gmail.com}
+        #   password: ${GMAIL_PASS:yourGmailAppPassword}
+        #   use-ssl: false
+        #   proxy-host: ${PROXY_2_HOST:}
+        #   proxy-port: ${PROXY_2_PORT:1080}
+        #   proxy-type: SOCKS5
+        #   proxy-username: ${PROXY_2_USER:}
+        #   proxy-password: ${PROXY_2_PASS:}
+
+        # -------------------------------------------------------------------
+        # Server 4: Your own VPS / Postfix — NO proxy needed
+        # -------------------------------------------------------------------
+        - name: my-vps-direct
+          host: ${VPS_SMTP_HOST:smtp.1zsdetva.sk}
+          port: 465
+          username: ${VPS_SMTP_USER:stefan.klinec@1zsdetva.sk}
+          password: ${VPS_SMTP_PASS:NatpevJegey}
+          use-ssl: true
+           # no proxy lines = direct connection
+
+        # -------------------------------------------------------------------
+        # Server 5: Another proxy with different Webshare IP
+        # -------------------------------------------------------------------
+        # - name: brevo-proxy-2
+        #   host: smtp-relay.brevo.com
+        #   port: 587
+        #   username: ${SMTP_USERNAME:}
+        #   password: ${SMTP_PASSWORD:}
+        #   proxy-host: ${PROXY_3_HOST:}
+        #   proxy-port: ${PROXY_3_PORT:1080}
+        #   proxy-type: SOCKS5
+        #   proxy-username: ${PROXY_3_USER:}
+        #   proxy-password: ${PROXY_3_PASS:}
