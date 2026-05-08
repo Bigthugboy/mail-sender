@@ -12,7 +12,7 @@ import org.springframework.web.client.RestClient;
 import xy.mailsenders.mail.config.MailSendingProperties;
 import xy.mailsenders.mail.domain.MailFailure;
 import xy.mailsenders.mail.domain.MailPayload;
-import xy.mailsenders.service.ResendMailGateWay;
+import xy.mailsenders.service.MailGateway;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -29,7 +29,7 @@ import java.util.Map;
  * sendAll() automatically chunks larger lists into groups of 100.
  */
 @Service
-public  class ResendMailGatewayImpl implements ResendMailGateWay {
+public  class ResendMailGatewayImpl implements MailGateway {
 
     private static final Logger logger = LoggerFactory.getLogger(ResendMailGatewayImpl.class);
 
