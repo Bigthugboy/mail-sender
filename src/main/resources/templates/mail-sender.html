@@ -47,8 +47,78 @@
         .btn-primary:hover { background: #333; }
         .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
         .char-count { font-size: 11px; color: #aaa; }
-        .progress-bar { height: 2px; background: #eee; display: none; }
-        .progress-fill { height: 100%; width: 0; background: #534AB7; transition: width 0.05s linear; }
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+            display: none; align-items: center; justify-content: center;
+            z-index: 9999;
+        }
+        .sending-modal {
+            background: #fff;
+            padding: 40px 30px;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.08);
+            text-align: center;
+            width: 400px;
+            max-width: 90vw;
+            border: 1px solid rgba(0,0,0,0.05);
+        }
+        .sending-icon {
+            color: #534AB7;
+            margin-bottom: 16px;
+            display: flex;
+            justify-content: center;
+        }
+        .sending-icon svg {
+            width: 42px;
+            height: 42px;
+        }
+        .sending-title {
+            font-size: 18px;
+            font-weight: 500;
+            color: #555;
+            margin-bottom: 24px;
+        }
+        .sending-progress-bg {
+            height: 14px;
+            background: #eef2f6;
+            border-radius: 8px;
+            overflow: hidden;
+            margin-bottom: 16px;
+        }
+        .sending-progress-fill {
+            height: 100%;
+            width: 0;
+            background-color: #3b82f6;
+            background-image: linear-gradient(
+                -45deg,
+                rgba(255, 255, 255, 0.2) 25%,
+                transparent 25%,
+                transparent 50%,
+                rgba(255, 255, 255, 0.2) 50%,
+                rgba(255, 255, 255, 0.2) 75%,
+                transparent 75%,
+                transparent
+            );
+            background-size: 30px 30px;
+            animation: progress-stripes 1s linear infinite;
+            transition: width 0.1s linear;
+        }
+        @keyframes progress-stripes {
+            0% { background-position: 0 0; }
+            100% { background-position: 30px 0; }
+        }
+        .sending-status-text {
+            font-size: 13px;
+            color: #777;
+            margin-bottom: 6px;
+        }
+        .sending-count-text {
+            font-size: 12px;
+            color: #999;
+        }
         .alert { padding: 10px 16px; border-radius: 8px; font-size: 13px; display: flex; align-items: center; gap: 8px; margin: 12px 18px 0; }
         .alert-success { background: #EAF3DE; border: 0.5px solid #97C459; color: #3B6D11; }
         .alert-error { background: #FCEBEB; border: 0.5px solid #F09595; color: #A32D2D; }
@@ -275,9 +345,21 @@
             <input type="hidden" name="embeddedLink" id="link-hidden" value=""/>
         </div>
 
-        <!-- ── Send progress bar ──────────────────────────────────────────── -->
-        <div class="progress-bar" id="progress-bar">
-            <div class="progress-fill" id="progress-fill"></div>
+        <!-- ── Sending Modal Overlay ──────────────────────────────────────────── -->
+        <div class="modal-overlay" id="sending-modal-overlay">
+            <div class="sending-modal">
+                <div class="sending-icon">
+                    <svg viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
+                    </svg>
+                </div>
+                <div class="sending-title">Sending Emails...</div>
+                <div class="sending-progress-bg">
+                    <div class="sending-progress-fill" id="modal-progress-fill"></div>
+                </div>
+                <div class="sending-status-text" id="modal-status-text">Sending... 0%</div>
+                <div class="sending-count-text" id="modal-count-text">0 / 0 emails sent</div>
+            </div>
         </div>
 
     </form>
@@ -470,14 +552,25 @@
         btn.disabled = true;
         btn.innerHTML = 'Sending…';
 
-        const bar = document.getElementById('progress-bar');
-        const fill = document.getElementById('progress-fill');
-        bar.style.display = 'block';
+        const totalCount = recipients.length;
+        const modalOverlay = document.getElementById('sending-modal-overlay');
+        const modalFill = document.getElementById('modal-progress-fill');
+        const modalStatus = document.getElementById('modal-status-text');
+        const modalCount = document.getElementById('modal-count-text');
+
+        modalOverlay.style.display = 'flex';
         let w = 0;
+        let sentCount = 0;
+        
         const iv = setInterval(() => {
-            w += Math.random() * 5;
+            const increment = (90 - w) * 0.1; 
+            w += increment > 0.5 ? increment : 0.5;
             if (w >= 90) w = 90;
-            fill.style.width = Math.round(w) + '%';
+            
+            modalFill.style.width = w.toFixed(1) + '%';
+            modalStatus.textContent = 'Sending... ' + w.toFixed(1) + '%';
+            sentCount = Math.floor((w / 100) * totalCount);
+            modalCount.textContent = sentCount.toLocaleString() + ' / ' + totalCount.toLocaleString() + ' emails sent';
         }, 100);
 
         try {
@@ -505,26 +598,30 @@
 
             const result = await response.json().catch(() => ({}));
             clearInterval(iv);
-            fill.style.width = '100%';
+            modalFill.style.width = '100%';
+            modalStatus.textContent = 'Sending... 100%';
+            modalCount.textContent = totalCount.toLocaleString() + ' / ' + totalCount.toLocaleString() + ' emails sent';
 
-            if (response.ok) {
-                document.getElementById('alert-success').classList.remove('hidden');
-                document.getElementById('alert-error').classList.add('hidden');
+            setTimeout(() => {
+                modalOverlay.style.display = 'none';
+                if (response.ok) {
+                    document.getElementById('alert-success').classList.remove('hidden');
+                    document.getElementById('alert-error').classList.add('hidden');
+                } else {
+                    document.getElementById('error-message').textContent = result.error || 'Failed to send mail';
+                    document.getElementById('alert-error').classList.remove('hidden');
+                }
                 btn.disabled = false;
-                btn.innerHTML = 'Send';
-            } else {
-                document.getElementById('error-message').textContent = result.error || 'Failed to send mail';
-                document.getElementById('alert-error').classList.remove('hidden');
-                btn.disabled = false;
-                btn.innerHTML = 'Send';
-            }
+                btn.innerHTML = `<svg width="12" height="12" viewBox="0 0 14 14" fill="none" style="display:inline-block;vertical-align:middle;margin-right:6px;"><path d="M1 1l12 6-12 6V8.5l9-1.5-9-1.5V1z" fill="currentColor"/></svg>Send`;
+            }, 600);
         } catch (err) {
             clearInterval(iv);
+            document.getElementById('sending-modal-overlay').style.display = 'none';
             console.error(err);
             document.getElementById('error-message').textContent = 'An unexpected error occurred.';
             document.getElementById('alert-error').classList.remove('hidden');
             btn.disabled = false;
-            btn.innerHTML = 'Send';
+            btn.innerHTML = `<svg width="12" height="12" viewBox="0 0 14 14" fill="none" style="display:inline-block;vertical-align:middle;margin-right:6px;"><path d="M1 1l12 6-12 6V8.5l9-1.5-9-1.5V1z" fill="currentColor"/></svg>Send`;
         }
     });
 
