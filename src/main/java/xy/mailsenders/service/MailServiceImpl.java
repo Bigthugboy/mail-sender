@@ -61,9 +61,7 @@ public class MailServiceImpl implements MailService {
 
         List<String> successfulEmails = uniqueMails.keySet().stream()
                 .filter(email -> !failedRecipients.contains(email))
-                .collect(Collectors.toList());
-
-        List<String> failedEmails = new ArrayList<>(failedRecipients);
+                .toList();
 
         int sentCount = uniqueMails.size() - failures.size();
 
