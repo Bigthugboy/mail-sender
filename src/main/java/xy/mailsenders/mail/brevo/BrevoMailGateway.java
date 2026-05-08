@@ -1,8 +1,7 @@
 package xy.mailsenders.mail.brevo;
 
 import lombok.extern.slf4j.Slf4j;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -13,8 +12,12 @@ import org.springframework.web.client.RestClient;
 import xy.mailsenders.mail.config.MailSendingProperties;
 import xy.mailsenders.mail.domain.MailFailure;
 import xy.mailsenders.mail.domain.MailPayload;
+import xy.mailsenders.mail.smtp.SmtpProperties;
 import xy.mailsenders.service.MailGateway;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 
+import java.net.InetSocketAddress;
+import java.net.Proxy;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -35,11 +38,24 @@ public class BrevoMailGateway implements MailGateway {
     @Value("${BREVO_API_KEY}")
     private String keyyy;
 
-    public BrevoMailGateway(RestClient.Builder restClientBuilder, MailSendingProperties properties) {
-        this.restClient = restClientBuilder
-                .baseUrl(properties.getBrevoBaseUrl())
-                .build();
+    public BrevoMailGateway(RestClient.Builder restClientBuilder, MailSendingProperties properties, SmtpProperties smtpProperties) {
         this.properties = properties;
+        
+        if (properties.isUseBrevoWithProxy() && StringUtils.hasText(smtpProperties.getProxyHost())) {
+            SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
+            Proxy.Type type = "HTTP".equalsIgnoreCase(smtpProperties.getProxyType()) ? Proxy.Type.HTTP : Proxy.Type.SOCKS;
+            factory.setProxy(new Proxy(type, new InetSocketAddress(smtpProperties.getProxyHost(), smtpProperties.getProxyPort())));
+            
+            this.restClient = restClientBuilder
+                    .requestFactory(factory)
+                    .baseUrl(properties.getBrevoBaseUrl())
+                    .build();
+            log.info("BrevoMailGateway initialized with {} proxy: {}:{}", type, smtpProperties.getProxyHost(), smtpProperties.getProxyPort());
+        } else {
+            this.restClient = restClientBuilder
+                    .baseUrl(properties.getBrevoBaseUrl())
+                    .build();
+        }
     }
 
     @Override
