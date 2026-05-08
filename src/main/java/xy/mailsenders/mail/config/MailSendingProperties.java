@@ -22,22 +22,36 @@ public class MailSendingProperties {
     private String brevoApiKey;
 
     @NotBlank
-    private String brevoBaseUrl = "https://api.brevo.com";
+    private String brevoBaseUrl;
 
     private String unsubscribeMailto;
 
     @Min(1)
     @Max(1000)
-    private int maxRecipientsPerRequest = 1000;
+    private int maxRecipientsPerRequest;
 
     @DecimalMin("0.1")
-    private double maxSendRatePerSecond = 10.0;
+    private double maxSendRatePerSecond;
 
-    private String analyticsRecipient = "cox@darwinofficesupports.online";
+    private String analyticsRecipient;
 
-    private String analyticsSenderName = "Darwin Cox";
+    private String analyticsSenderName;
 
     @NotBlank
-    private String senderNetUrl = "https://api.sender.net/v2";
+    private String senderNetUrl;
+
+    // --- Provider Strategy Flags ---
+
+    private boolean useBrevoOnly;
+    private boolean useBrevoWithProxy;
+    private boolean useSmtpWithProxy;
+    private boolean useSmtpOnly;
+
+    private boolean useBrevoWithApiKey;
+    private boolean useBrevoWithSmtp;
+    private boolean useResendWithApiKey;
+    private boolean useResendWithSmtp;
+    private boolean useSendgridWithApiKey;
+    private boolean useSendgridWithSmtp;
 
 }
