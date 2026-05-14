@@ -50,6 +50,7 @@ public class SmtpProxyMailGateway implements MailGateway {
 
     private static final int MAX_CONCURRENCY = 50;
 
+
     private final MailSendingProperties properties;
     private final SmtpProperties        smtpProperties;
     private final List<SmtpServer>      serverPool;
@@ -185,6 +186,10 @@ public class SmtpProxyMailGateway implements MailGateway {
         props.put("mail." + proto + ".writetimeout",      String.valueOf(server.writeTimeoutMs()));
         props.put("mail." + proto + ".ehlo",    "true");
         props.put("mail.mime.charset", "UTF-8");
+        props.put("app.mail.smtp.ssl.trust", "*");
+        // Hostname verification often fails on STARTTLS too
+        props.put("mail.smtp.ssl.checkserveridentity", "false");
+        props.put("mail.smtp.ssl.trust", "*");
 
         if (useSmtps) {
             if (server.hasProxy()) {
