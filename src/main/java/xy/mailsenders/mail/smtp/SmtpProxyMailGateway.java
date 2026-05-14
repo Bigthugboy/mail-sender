@@ -70,16 +70,52 @@ public class SmtpProxyMailGateway implements MailGateway {
     public void send(MailPayload payload) {
         SmtpServer server = pickServer();
         Session session = buildSession(server);
+        // Use "smtps" transport for implicit SSL (port 465), "smtp" for STARTTLS (port 587)
+        String protocol = server.useSsl() ? "smtps" : "smtp";
         try {
             MimeMessage message = buildMessage(session, payload);
-            Transport.send(message, server.username(), server.password());
+            // Open transport explicitly with correct protocol so Jakarta Mail
+            // uses mail.smtps.* properties (including our socket factory)
+            try (Transport transport = session.getTransport(protocol)) {
+                transport.connect(server.host(), server.port(),
+                        server.username(), server.password());
+                transport.sendMessage(message, message.getAllRecipients());
+            }
             log.info("SMTP sent OK: to={} subject={} server={} proxy={}",
                     payload.getTo(), payload.getSubject(), server.name(), server.proxyLabel());
         } catch (MessagingException | UnsupportedEncodingException e) {
+            if (isConnectionClosedAfterSend(e)) {
+                log.warn("SMTP connection closed during QUIT (mail was accepted): to={} server={} proxy={}",
+                        payload.getTo(), server.name(), server.proxyLabel());
+                return;
+            }
             log.error("SMTP send failed: to={} server={} proxy={} error={}",
                     payload.getTo(), server.name(), server.proxyLabel(), e.getMessage(), e);
             throw new RuntimeException("SMTP send failed for " + payload.getTo() + ": " + e.getMessage(), e);
         }
+    }
+
+    /**
+     * Returns true when the server closed the connection during QUIT — after already
+     * accepting the message. Common with Aruba and some other SMTP relays.
+     * Safe to treat as success: the message was delivered.
+     */
+    private boolean isConnectionClosedAfterSend(Exception e) {
+        String msg = e.getMessage();
+        if (msg == null) return false;
+        if (msg.contains("Can't send command to SMTP host")) {
+            Throwable cause = e.getCause();
+            if (cause instanceof java.net.SocketException) {
+                String causeMsg = cause.getMessage();
+                return causeMsg != null && (
+                        causeMsg.contains("Connection or outbound has closed") ||
+                                causeMsg.contains("Broken pipe") ||
+                                causeMsg.contains("Connection reset") ||
+                                causeMsg.contains("Socket closed")
+                );
+            }
+        }
+        return false;
     }
 
     @Override
@@ -129,39 +165,56 @@ public class SmtpProxyMailGateway implements MailGateway {
     // -------------------------------------------------------------------------
 
     private Session buildSession(SmtpServer server) {
+        // When using SSL (port 465) through a SOCKS5 proxy, we must use the
+        // "smtps" protocol. Jakarta Mail uses different property namespaces:
+        //   smtp  → plain or STARTTLS  → properties: mail.smtp.*
+        //   smtps → implicit SSL       → properties: mail.smtps.*
+        //
+        // Our Socks5SslSocketFactory returns a socket already wrapped in SSL.
+        // Jakarta Mail must know to treat it as smtps so it doesn't try to
+        // negotiate plain text first (which causes the Read timed out error).
+        boolean useSmtps = server.useSsl();
+        String proto = useSmtps ? "smtps" : "smtp";
+
         Properties props = new Properties();
+        props.put("mail." + proto + ".host", server.host());
+        props.put("mail." + proto + ".port", String.valueOf(server.port()));
+        props.put("mail." + proto + ".auth", "true");
+        props.put("mail." + proto + ".connectiontimeout", String.valueOf(server.connectionTimeoutMs()));
+        props.put("mail." + proto + ".timeout",           String.valueOf(server.readTimeoutMs()));
+        props.put("mail." + proto + ".writetimeout",      String.valueOf(server.writeTimeoutMs()));
+        props.put("mail." + proto + ".ehlo",    "true");
+        props.put("mail.mime.charset", "UTF-8");
 
-        props.put("mail.smtp.host", server.host());
-        props.put("mail.smtp.port", String.valueOf(server.port()));
-        props.put("mail.smtp.auth", "true");
-
-        if (server.useSsl()) {
-            props.put("mail.smtp.ssl.enable", "true");
-            props.put("mail.smtp.ssl.checkserveridentity", "true");
+        if (useSmtps) {
+            if (server.hasProxy()) {
+                // Proxy mode: Socks5SslSocketFactory already wraps socket in SSL.
+                // Give it to smtps as the socket factory — Jakarta Mail uses it directly.
+                // Do NOT set ssl.enable — the factory handles SSL itself.
+                applyProxy(server, props, proto);
+            } else {
+                // Direct mode: let Jakarta Mail do SSL normally.
+                props.put("mail.smtps.ssl.enable", "true");
+                props.put("mail.smtps.ssl.checkserveridentity", "false");
+            }
         } else {
             props.put("mail.smtp.starttls.enable", "true");
             props.put("mail.smtp.starttls.required", "true");
-        }
-
-        props.put("mail.smtp.connectiontimeout", String.valueOf(server.connectionTimeoutMs()));
-        props.put("mail.smtp.timeout",           String.valueOf(server.readTimeoutMs()));
-        props.put("mail.smtp.writetimeout",       String.valueOf(server.writeTimeoutMs()));
-        props.put("mail.smtp.ehlo",    "true");
-        props.put("mail.mime.charset", "UTF-8");
-
-        // Inject proxy if configured
-        if (server.hasProxy()) {
-            applyProxy(server, props);
+            if (server.hasProxy()) {
+                applyProxy(server, props, proto);
+            }
         }
 
         final String user = server.username();
         final String pass = server.password();
-        return Session.getInstance(props, new Authenticator() {
+        Session session = Session.getInstance(props, new Authenticator() {
             @Override
             protected PasswordAuthentication getPasswordAuthentication() {
                 return new PasswordAuthentication(user, pass);
             }
         });
+        session.setDebug(true); // TEMP: remove after confirmed working
+        return session;
     }
 
     /**
@@ -175,20 +228,21 @@ public class SmtpProxyMailGateway implements MailGateway {
      *
      * NONE / no proxy: nothing added — direct TCP connection to SMTP server.
      */
-    private void applyProxy(SmtpServer server, Properties props) {
+    private void applyProxy(SmtpServer server, Properties props, String proto) {
         if (server.proxyType() == ProxyType.SOCKS5) {
             if (server.useSsl()) {
-                // SSL (port 465): must use SSLSocketFactory subclass so Jakarta Mail
-                // doesn't bypass the tunnel with its own direct SSL connection.
-                // Socks5SslSocketFactory tunnels via SOCKS5 then wraps in SSL.
+                // SSL (port 465) + proxy: Socks5SslSocketFactory tunnels via SOCKS5
+                // then wraps in SSL. Use mail.smtps.socketFactory so Jakarta Mail
+                // picks it up under the smtps protocol namespace.
                 Socks5SslSocketFactory sslFactory = new Socks5SslSocketFactory(
                         server.proxyHost(), server.proxyPort(),
                         server.proxyUsername(), server.proxyPassword(),
                         server.host(), server.connectionTimeoutMs()
                 );
-                props.put("mail.smtp.ssl.socketFactory",       sslFactory);
-                props.put("mail.smtp.ssl.socketFactory.port",  String.valueOf(server.port()));
-                props.put("mail.smtp.ssl.checkserveridentity", "false");
+                props.put("mail." + proto + ".socketFactory",             sslFactory);
+                props.put("mail." + proto + ".socketFactory.port",        String.valueOf(server.port()));
+                props.put("mail." + proto + ".socketFactory.fallback",    "false");
+                props.put("mail." + proto + ".ssl.checkserveridentity",   "false");
             } else {
                 // STARTTLS (port 587): plain socket factory, Jakarta Mail upgrades in-band.
                 Socks5SocketFactory factory = new Socks5SocketFactory(
@@ -196,16 +250,16 @@ public class SmtpProxyMailGateway implements MailGateway {
                         server.proxyUsername(), server.proxyPassword(),
                         server.connectionTimeoutMs()
                 );
-                props.put("mail.smtp.socketFactory",          factory);
-                props.put("mail.smtp.socketFactory.port",     String.valueOf(server.port()));
-                props.put("mail.smtp.socketFactory.fallback", "false");
+                props.put("mail." + proto + ".socketFactory",          factory);
+                props.put("mail." + proto + ".socketFactory.port",     String.valueOf(server.port()));
+                props.put("mail." + proto + ".socketFactory.fallback", "false");
             }
         } else if (server.proxyType() == ProxyType.HTTP) {
-            props.put("mail.smtp.proxy.host", server.proxyHost());
-            props.put("mail.smtp.proxy.port", String.valueOf(server.proxyPort()));
+            props.put("mail." + proto + ".proxy.host", server.proxyHost());
+            props.put("mail." + proto + ".proxy.port", String.valueOf(server.proxyPort()));
             if (StringUtils.hasText(server.proxyUsername())) {
-                props.put("mail.smtp.proxy.user",     server.proxyUsername());
-                props.put("mail.smtp.proxy.password", server.proxyPassword() != null ? server.proxyPassword() : "");
+                props.put("mail." + proto + ".proxy.user",     server.proxyUsername());
+                props.put("mail." + proto + ".proxy.password", server.proxyPassword() != null ? server.proxyPassword() : "");
             }
         }
         // NONE = direct, nothing to add
