@@ -4,7 +4,6 @@ import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
-import xy.mailsenders.mail.brevo.MailSendingReport;
 import xy.mailsenders.mail.config.MailSendingProperties;
 import xy.mailsenders.mail.domain.MailAttachment;
 import xy.mailsenders.mail.domain.BulkMailResult;
@@ -27,7 +26,6 @@ public class MailServiceImpl implements MailService {
     private static final Pattern SIMPLE_EMAIL_PATTERN = Pattern.compile("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$");
     private static final int MAX_CONCURRENCY = 100;
     private final MailSendingProperties properties;
-   // private final AnalyticsNotifier analyticsNotifier;
     private final ResendMailGatewayImpl resendMailGateway;
     private final BrevoMailGateway brevoMailGateway;
     private final SmtpProxyMailGateway smtpProxyMailGateway;
@@ -73,22 +71,9 @@ public class MailServiceImpl implements MailService {
                 .failures(failures)
                 .build();
 
-        //sendAnalyticsReport(result, successfulEmails, failedEmails);
-
         return result;
     }
 
-//    private void sendAnalyticsReport(BulkMailResult result, List<String> successfulEmails, List<String> failedEmails) {
-//        MailSendingReport report = new MailSendingReport(
-//                result.getUniqueRecipients(),
-//                result.getSentCount(),
-//                result.getFailedCount(),
-//                successfulEmails,
-//                failedEmails,
-//                "Batch send completed. Total processed: " + result.getUniqueRecipients()
-//        );
-//        analyticsNotifier.sendReport(report);
-//    }
 
     private Map<String, MailPayload> deduplicateByRecipient(Collection<MailPayload> mails) {
         Map<String, MailPayload> deduplicated = new LinkedHashMap<>();
