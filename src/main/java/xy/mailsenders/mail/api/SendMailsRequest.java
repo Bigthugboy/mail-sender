@@ -18,4 +18,7 @@ public class SendMailsRequest {
     @NotEmpty
     @Size(max = 1000)
     private List<@Valid MailPayload> mails;
+
+    private String campaignName;
 }
+
