@@ -18,9 +18,10 @@ class MailControllerTest {
     @Test
     void send_ShouldDelegateToServiceAndReturnMappedResponse() {
         StubMailService stubMailService = new StubMailService();
-        MailController mailController = new MailController(stubMailService);
+        MailController mailController = new MailController(stubMailService, new xy.mailsenders.service.MetricsService());
         SendMailsRequest request = new SendMailsRequest(
-                List.of(new MailPayload("user@example.com", "subject", "body", false))
+                List.of(new MailPayload("user@example.com", "subject", "body", false)),
+                null
         );
 
         BulkMailResponse response = mailController.send(request);
@@ -35,7 +36,7 @@ class MailControllerTest {
 
     @Test
     void onIllegalArgument_ShouldReturnErrorMap() {
-        MailController mailController = new MailController(mails -> null);
+        MailController mailController = new MailController(mails -> null, new xy.mailsenders.service.MetricsService());
         Map<String, String> error = mailController.onIllegalArgument(new IllegalArgumentException("bad request"));
         assertEquals("bad request", error.get("error"));
     }
