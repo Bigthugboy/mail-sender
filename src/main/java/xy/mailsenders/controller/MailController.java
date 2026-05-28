@@ -13,6 +13,7 @@ import xy.mailsenders.mail.api.BulkMailResponse;
 import xy.mailsenders.mail.api.SendMailsRequest;
 import xy.mailsenders.mail.domain.BulkMailResult;
 import xy.mailsenders.service.MailService;
+import xy.mailsenders.service.MetricsService;
 
 import java.util.Map;
 
@@ -21,10 +22,12 @@ import java.util.Map;
 @RequestMapping("/api/mails")
 public class MailController {
     private final MailService mailService;
+    private final MetricsService metricsService;
 
     @PostMapping("/send")
     public BulkMailResponse send(@Valid @RequestBody SendMailsRequest request) {
         BulkMailResult result = mailService.sendMails(request.getMails());
+        metricsService.record(request.getCampaignName(), result);
         return BulkMailResponse.from(result);
     }
 
