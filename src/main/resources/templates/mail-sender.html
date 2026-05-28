@@ -136,7 +136,7 @@
 
     /* METRICS */
     #s-metrics{background:var(--bg)}
-    .metrics-body{padding:18px;overflow-y:auto;flex:1}
+    .metrics-body{padding:18px;flex:1;overflow:hidden;display:flex;flex-direction:column;min-height:0;}
     .m-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:16px}
     .m-card{background:var(--surface);border:.5px solid var(--border);border-radius:var(--r);padding:14px 16px}
     .m-lbl{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--text3);margin-bottom:4px}
@@ -144,10 +144,24 @@
     .m-sub{font-size:10px;color:var(--text3);margin-top:2px}
     .sec-title{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);margin-bottom:10px}
     .charts-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px}
-    .chart-card{background:var(--surface);border:.5px solid var(--border);border-radius:var(--r);padding:14px 16px}
+    .chart-card{
+      background:var(--surface);
+      border:.5px solid var(--border);
+      border-radius:var(--r);
+      padding:14px 16px;
+      height:320px;
+      display:flex;
+      flex-direction:column;
+    }
     .chart-title{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--text3);margin-bottom:10px}
     .camp-card{background:var(--surface);border:.5px solid var(--border);border-radius:var(--r);padding:14px 18px;margin-bottom:10px}
     .dbar{display:flex;height:5px;border-radius:3px;overflow:hidden;gap:2px;margin-top:10px}
+    #camp-list{
+      flex:1;
+      overflow-y:auto;
+      min-height:0;
+      padding-right:4px;
+    }
     .dbar-g{background:#4a9020;border-radius:3px;transition:width .5s}
     .dbar-r{background:#c03030;border-radius:3px;transition:width .5s}
     .empty-state{text-align:center;padding:40px 20px;color:var(--text3);font-size:13px}
@@ -956,40 +970,18 @@
   }
   function set(id,val){var el=document.getElementById(id);if(el)el.textContent=val;}
 
-  function renderCharts(sum,camps){
-    var hasCamps=camps&&camps.length>0;
-    document.getElementById('charts-section').style.display=hasCamps?'grid':'none';
-    if(!hasCamps)return;
-    var dark=S.dark;
-    var gridColor=dark?'rgba(255,255,255,0.06)':'rgba(0,0,0,0.06)';
-    var textColor=dark?'#a0a0b0':'#666';
-    var labels=camps.slice(0,10).reverse().map(function(c){return c.name.length>14?c.name.substr(0,14)+'…':c.name;});
-    var sentData=camps.slice(0,10).reverse().map(function(c){return c.sent;});
-    var failData=camps.slice(0,10).reverse().map(function(c){return c.failed;});
-    if(Charts.bar)Charts.bar.destroy();
-    Charts.bar=new Chart(document.getElementById('bar-chart'),{
-      type:'bar',
-      data:{labels:labels,datasets:[
-          {label:'Delivered',data:sentData,backgroundColor:'rgba(74,144,32,0.75)',borderRadius:4,borderSkipped:false},
-          {label:'Failed',data:failData,backgroundColor:'rgba(192,48,48,0.7)',borderRadius:4,borderSkipped:false}
-        ]},
-      options:{responsive:true,maintainAspectRatio:false,
-        plugins:{legend:{labels:{color:textColor,font:{size:11}}},tooltip:{mode:'index'}},
-        scales:{x:{ticks:{color:textColor,font:{size:10}},grid:{color:gridColor}},y:{ticks:{color:textColor,font:{size:10}},grid:{color:gridColor},beginAtZero:true}}
-      }
-    });
-    if(Charts.pie)Charts.pie.destroy();
-    Charts.pie=new Chart(document.getElementById('pie-chart'),{
-      type:'doughnut',
-      data:{labels:['Delivered','Failed'],datasets:[{data:[sum.totalSent||0,sum.totalFailed||0],backgroundColor:['rgba(74,144,32,0.8)','rgba(192,48,48,0.75)'],borderWidth:0,hoverOffset:6}]},
-      options:{responsive:true,maintainAspectRatio:false,cutout:'68%',
-        plugins:{legend:{position:'bottom',labels:{color:textColor,font:{size:11},padding:14}},
-          tooltip:{callbacks:{label:function(ctx){var tot=ctx.dataset.data.reduce(function(a,b){return a+b;},0);var pct=tot>0?Math.round(ctx.parsed/tot*100):0;return ctx.label+': '+ctx.parsed.toLocaleString()+' ('+pct+'%)';}}}
-        }
-      }
-    });
-  }
-
+  function renderCharts(sum, camps) { document.getElementById('charts-section').style.display = 'grid'; var dark = S.dark; var gridColor = dark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'; var textColor = dark ? '#a0a0b0' : '#666'; var labels = camps && camps.length ? camps.slice(0,10).reverse().map(function(c){ return c.name.length > 14 ? c.name.substr(0,14) + '…' : c.name; }) : ['No Campaigns']; var sentData = camps && camps.length ? camps.slice(0,10).reverse().map(function(c){ return c.sent; }) : [0]; var failData = camps && camps.length ? camps.slice(0,10).reverse().map(function(c){ return c.failed; }) : [0]; if (Charts.bar) { Charts.bar.destroy(); } Charts.bar = new Chart( document.getElementById('bar-chart'), { type:'bar', data:{ labels:labels, datasets:[ { label:'Delivered', data:sentData, backgroundColor:'rgba(74,144,32,0.75)', borderRadius:4, borderSkipped:false }, { label:'Failed', data:failData, backgroundColor:'rgba(192,48,48,0.7)', borderRadius:4, borderSkipped:false } ] }, options:{ responsive:true, maintainAspectRatio:false, animation:false, plugins:{ legend:{ labels:{ color:textColor, font:{size:11} } }, tooltip:{ mode:'index' } }, scales:{ x:{ ticks:{ color:textColor, font:{size:10} }, grid:{ color:gridColor } }, y:{ ticks:{ color:textColor, font:{size:10} }, grid:{ color:gridColor }, beginAtZero:true } } } } ); if (Charts.pie) { Charts.pie.destroy(); } Charts.pie = new Chart( document.getElementById('pie-chart'), { type:'doughnut', data:{ labels:['Delivered','Failed'], datasets:[ { data:[ Math.max(sum.totalSent || 0, 1), Math.max(sum.totalFailed || 0, 1) ], backgroundColor:[ 'rgba(74,144,32,0.8)', 'rgba(192,48,48,0.75)' ], borderWidth:0, hoverOffset:6 } ] }, options:{ responsive:true, maintainAspectRatio:false, animation:false, cutout:'68%', plugins:{ legend:{ position:'bottom', labels:{ color:textColor, font:{size:11}, padding:14 } }, tooltip:{ callbacks:{ label:function(ctx){ var tot = ctx.dataset.data.reduce(function(a,b){ return a+b; },0); var pct = tot > 0 ? Math.round(ctx.parsed / tot * 100) : 0; return ctx.label + ': ' + ctx.parsed.toLocaleString() + ' (' + pct + '%)'; } } } } } } ); }
+  // @media (max-width: 900px){
+  //
+  // .charts-grid{
+  //     grid-template-columns:1fr;
+  //   }
+  //
+  // .chart-card{
+  //     height:280px;
+  //   }
+  //
+  // }
   function renderCampaignList(camps){
     var list=document.getElementById('camp-list');
     if(!camps||camps.length===0){
@@ -1027,6 +1019,7 @@
       list.appendChild(card);
     });
   }
+
 
   window.onload=loadDraft;
 </script>
