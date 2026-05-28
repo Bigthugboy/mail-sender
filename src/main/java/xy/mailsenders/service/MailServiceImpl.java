@@ -1,19 +1,17 @@
 package xy.mailsenders.service;
 
 import lombok.AllArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
+import xy.mailsenders.mail.brevo.BrevoMailGateway;
 import xy.mailsenders.mail.config.MailSendingProperties;
-import xy.mailsenders.mail.domain.MailAttachment;
 import xy.mailsenders.mail.domain.BulkMailResult;
+import xy.mailsenders.mail.domain.MailAttachment;
 import xy.mailsenders.mail.domain.MailFailure;
 import xy.mailsenders.mail.domain.MailPayload;
-import xy.mailsenders.mail.resend.ResendMailGatewayImpl;
-import xy.mailsenders.mail.smtp.SmtpProxyMailGateway;
-import xy.mailsenders.mail.brevo.BrevoMailGateway;
-import xy.mailsenders.service.MailGateway;
-import lombok.extern.slf4j.Slf4j;
+import xy.mailsenders.mail.smtp.SmtpMailGateway;
 
 import java.util.*;
 import java.util.regex.Pattern;
@@ -23,122 +21,85 @@ import java.util.stream.Collectors;
 @Service
 @AllArgsConstructor
 public class MailServiceImpl implements MailService {
-    private static final Pattern SIMPLE_EMAIL_PATTERN = Pattern.compile("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$");
+
+    private static final Pattern EMAIL_PATTERN = Pattern.compile("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$");
     private static final int MAX_CONCURRENCY = 100;
-    private final MailSendingProperties properties;
-    private final ResendMailGatewayImpl resendMailGateway;
-    private final BrevoMailGateway brevoMailGateway;
-    private final SmtpProxyMailGateway smtpProxyMailGateway;
+    private final MailSendingProperties props;
+    private final BrevoMailGateway      brevoGateway;
+    private final SmtpMailGateway       smtpGateway;
 
 
     @Override
     public BulkMailResult sendMails(Collection<MailPayload> mails) {
-        if (mails == null || mails.isEmpty()) {
+        if (mails == null || mails.isEmpty())
             throw new IllegalArgumentException("mails must not be empty");
-        }
-        if (mails.size() > properties.getMaxRecipientsPerRequest()) {
-            throw new IllegalArgumentException("Maximum recipients per request is " + properties.getMaxRecipientsPerRequest());
-        }
+        if (mails.size() > props.getMaxRecipientsPerRequest())
+            throw new IllegalArgumentException(
+                    "Maximum recipients per request is " + props.getMaxRecipientsPerRequest());
 
-        Map<String, MailPayload> uniqueMails = deduplicateByRecipient(mails);
+        Map<String, MailPayload> unique = deduplicate(mails);
+        unique.values().forEach(this::validate);
 
-        // Validate all payloads up-front before sending anything
-        uniqueMails.values().forEach(this::validatePayload);
+        MailGateway gateway = resolveGateway();
+        log.info("Gateway: {} — sending to {} unique recipients",
+                gateway.getClass().getSimpleName(), unique.size());
 
-        // Resolve which gateway to use based on env flags
-        MailGateway activeGateway = resolveGateway();
-        log.info("Using mail gateway: {}", activeGateway.getClass().getSimpleName());
+        int concurrency = Math.min(unique.size(), MAX_CONCURRENCY);
+        List<MailFailure> failures = gateway.sendAll(unique.values(), concurrency);
 
-        // Fire all requests concurrently
-        int concurrency = Math.min(uniqueMails.size(), MAX_CONCURRENCY);
-        List<MailFailure> failures = activeGateway.sendAll(uniqueMails.values(), concurrency);
+        Set<String> failed = failures.stream()
+                .map(MailFailure::getRecipient).collect(Collectors.toSet());
 
-        Set<String> failedRecipients = failures.stream()
-                .map(MailFailure::getRecipient)
-                .collect(Collectors.toSet());
-
-        List<String> successfulEmails = uniqueMails.keySet().stream()
-                .filter(email -> !failedRecipients.contains(email))
-                .toList();
-
-        int sentCount = uniqueMails.size() - failures.size();
-
-        BulkMailResult result = BulkMailResult.builder()
+        return BulkMailResult.builder()
                 .requestedRecipients(mails.size())
-                .uniqueRecipients(uniqueMails.size())
-                .sentCount(sentCount)
+                .uniqueRecipients(unique.size())
+                .sentCount(unique.size() - failures.size())
                 .failedCount(failures.size())
                 .failures(failures)
                 .build();
-
-        return result;
     }
 
-
-    private Map<String, MailPayload> deduplicateByRecipient(Collection<MailPayload> mails) {
-        Map<String, MailPayload> deduplicated = new LinkedHashMap<>();
-        for (MailPayload mail : mails) {
-            if (mail == null || !StringUtils.hasText(mail.getTo())) {
-                continue;
-            }
-            String key = mail.getTo().trim().toLowerCase();
-            deduplicated.putIfAbsent(key, mail);
-        }
-        if (deduplicated.isEmpty()) {
-            throw new IllegalArgumentException("No valid recipient found in request");
-        }
-        return deduplicated;
-    }
-
-    private void validatePayload(MailPayload payload) {
-        if (payload == null) {
-            throw new IllegalArgumentException("mail payload must not be null");
-        }
-        if (!StringUtils.hasText(payload.getTo())) {
-            throw new IllegalArgumentException("recipient address must not be blank");
-        }
-        if (!StringUtils.hasText(payload.getSubject())) {
-            throw new IllegalArgumentException("subject must not be blank");
-        }
-        if (!StringUtils.hasText(payload.getBody())) {
-            throw new IllegalArgumentException("body must not be blank");
-        }
-        if (!SIMPLE_EMAIL_PATTERN.matcher(payload.getTo().trim()).matches()) {
-            throw new IllegalArgumentException("invalid recipient address: " + payload.getTo());
-        }
-        if (!CollectionUtils.isEmpty(payload.getAttachments())) {
-            for (MailAttachment attachment : payload.getAttachments()) {
-                if (attachment == null) {
-                    throw new IllegalArgumentException("attachment must not be null");
-                }
-                if (!StringUtils.hasText(attachment.getFileName())) {
-                    throw new IllegalArgumentException("attachment fileName must not be blank");
-                }
-                if (!StringUtils.hasText(attachment.getBase64Content())) {
-                    throw new IllegalArgumentException("attachment content must not be blank");
-                }
-            }
-        }
-    }
+    // ── gateway selection (OCP: add flag + branch, never change existing) ────
 
     private MailGateway resolveGateway() {
-        // Priority: Brevo API -> Resend API -> SMTP (with variants)
-        
-        if (properties.isUseBrevoOnly() || properties.isUseBrevoWithApiKey()) {
-            return brevoMailGateway;
-        }
-        
-        if (properties.isUseResendWithApiKey()) {
-            return resendMailGateway;
-        }
-        
-        if (properties.isUseBrevoWithSmtp() || properties.isUseResendWithSmtp() || 
-            properties.isUseSendgridWithSmtp() || properties.isUseSmtpWithProxy() || 
-            properties.isUseSmtpOnly()) {
-            return smtpProxyMailGateway;
-        }
+        if (props.isUseBrevoOnly() || props.isUseBrevoWithApiKey())
+            return brevoGateway;
+        return smtpGateway; // default
+    }
 
-        // Default fallback (legacy behavior)
-        return smtpProxyMailGateway;
+    // ── deduplication ────────────────────────────────────────────────────────
+
+    private Map<String, MailPayload> deduplicate(Collection<MailPayload> mails) {
+        Map<String, MailPayload> map = new LinkedHashMap<>();
+        for (MailPayload m : mails) {
+            if (m == null || !StringUtils.hasText(m.getTo())) continue;
+            map.putIfAbsent(m.getTo().trim().toLowerCase(), m);
+        }
+        if (map.isEmpty())
+            throw new IllegalArgumentException("No valid recipient found in request");
+        return map;
+    }
+
+    // ── validation ───────────────────────────────────────────────────────────
+
+    private void validate(MailPayload payload) {
+        if (payload == null) throw new IllegalArgumentException("payload must not be null");
+        requireText(payload.getTo(),      "recipient address");
+        requireText(payload.getSubject(), "subject");
+        requireText(payload.getBody(),    "body");
+        if (!EMAIL_PATTERN.matcher(payload.getTo().trim()).matches())
+            throw new IllegalArgumentException("invalid recipient address: " + payload.getTo());
+        if (!CollectionUtils.isEmpty(payload.getAttachments())) {
+            for (MailAttachment mailAttachment : payload.getAttachments()) {
+                if (mailAttachment == null) throw new IllegalArgumentException("attachment must not be null");
+                requireText(mailAttachment.getFileName(),     "attachment fileName");
+                requireText(mailAttachment.getBase64Content(),"attachment content");
+            }
+        }
+    }
+
+    private void requireText(String value, String field) {
+        if (!StringUtils.hasText(value))
+            throw new IllegalArgumentException(field + " must not be blank");
     }
 }
