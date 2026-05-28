@@ -1,674 +1,1034 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Compose Mail</title>
-    <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #fff; min-height: 100vh; margin: 0; padding: 0; }
-        .composer { background: #fff; width: 100%; min-height: 100vh; display: flex; flex-direction: column; }
-        .composer-header { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; border-bottom: 0.5px solid rgba(0,0,0,0.08); background: #fafaf9; }
-        .header-left { display: flex; align-items: center; gap: 10px; }
-        .avatar { width: 34px; height: 34px; border-radius: 50%; background: #CECBF6; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 500; color: #3C3489; flex-shrink: 0; }
-        .sender-name { font-size: 13px; font-weight: 500; color: #111; }
-        .sender-email { font-size: 11px; color: #888; }
-        .icon-btn { background: transparent; border: none; cursor: pointer; padding: 6px; border-radius: 6px; color: #666; display: flex; align-items: center; }
-        .icon-btn:hover { background: #f0f0ee; }
-        .field-row { display: flex; align-items: center; padding: 11px 18px; border-bottom: 0.5px solid rgba(0,0,0,0.08); gap: 10px; }
-        .field-label { font-size: 12px; color: #999; min-width: 52px; font-weight: 500; letter-spacing: 0.03em; }
-        .tags-area { flex: 1; display: flex; flex-wrap: wrap; gap: 5px; align-items: center; }
-        .tag { display: inline-flex; align-items: center; gap: 4px; background: #EEEDFE; border: 0.5px solid #AFA9EC; border-radius: 20px; padding: 3px 10px; }
-        .tag span { font-size: 12px; color: #3C3489; }
-        .tag-x { cursor: pointer; font-size: 14px; color: #534AB7; line-height: 1; border: none; background: none; padding: 0; }
-        .bare-input { border: none; outline: none; background: transparent; font-size: 13px; color: #111; flex: 1; min-width: 120px; font-family: inherit; }
-        .subject-input { flex: 1; border: none; outline: none; background: transparent; font-size: 15px; font-weight: 500; color: #111; font-family: inherit; width: 100%; }
-        .toolbar { display: flex; align-items: center; gap: 2px; padding: 10px 18px; border-bottom: 0.5px solid rgba(0,0,0,0.08); flex-wrap: wrap; background: #fafaf9; }
-        .tool-btn { background: transparent; border: none; cursor: pointer; padding: 6px 8px; border-radius: 6px; display: flex; align-items: center; gap: 4px; color: #666; font-size: 12px; font-family: inherit; }
-        .tool-btn:hover { background: #f0f0ee; color: #111; }
-        .tool-btn svg { width: 15px; height: 15px; flex-shrink: 0; }
-        .tool-divider { width: 0.5px; height: 18px; background: rgba(0,0,0,0.1); margin: 0 4px; }
-        .body-area { padding: 40px; flex-grow: 1; display: flex; flex-direction: column; background: #f4f4f2; align-items: center; overflow-y: auto; }
-        .body-editor { width: 100%; max-width: 850px; flex-grow: 1; border: 1px solid #e0e0e0; outline: none; background: #fff; font-size: 16px; color: #111; line-height: 1.8; font-family: inherit; min-height: 800px; text-align: left; padding: 60px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); }
-        .attachments-area { padding: 12px 18px; display: flex; flex-wrap: wrap; gap: 8px; border-bottom: 0.5px solid rgba(0,0,0,0.08); }
-        .attachments-area:empty { display: none; padding: 0; border: none; }
-        .attach-chip { display: flex; align-items: center; gap: 7px; padding: 7px 12px; border-radius: 8px; border: 0.5px solid rgba(0,0,0,0.1); background: #fff; max-width: 220px; }
-        .attach-icon { width: 28px; height: 28px; border-radius: 6px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 10px; font-weight: 500; }
-        .attach-name { font-size: 12px; font-weight: 500; color: #111; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 130px; }
-        .attach-size { font-size: 11px; color: #999; }
-        .attach-remove { margin-left: auto; background: none; border: none; cursor: pointer; color: #999; padding: 2px; font-size: 16px; flex-shrink: 0; }
-        .link-row { display: flex; align-items: center; gap: 8px; padding: 10px 18px; border-bottom: 0.5px solid rgba(0,0,0,0.08); }
-        .link-chip { display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; border-radius: 20px; background: #E6F1FB; border: 0.5px solid #85B7EB; }
-        .link-chip span { font-size: 12px; color: #185FA5; }
-        .footer { display: flex; align-items: center; justify-content: space-between; padding: 12px 18px; background: #fafaf9; flex-wrap: wrap; gap: 10px; }
-        .btn-ghost { font-size: 13px; padding: 8px 14px; border-radius: 8px; border: 0.5px solid rgba(0,0,0,0.15); background: transparent; cursor: pointer; color: #555; font-family: inherit; }
-        .btn-ghost:hover { background: #f0f0ee; }
-        .btn-primary { font-size: 13px; padding: 8px 20px; border-radius: 8px; border: none; background: #111; color: #fff; cursor: pointer; font-weight: 500; display: inline-flex; align-items: center; gap: 7px; font-family: inherit; }
-        .btn-primary:hover { background: #333; }
-        .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
-        .char-count { font-size: 11px; color: #aaa; }
-        .modal-overlay {
-            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(255, 255, 255, 0.7);
-            backdrop-filter: blur(4px);
-            -webkit-backdrop-filter: blur(4px);
-            display: none; align-items: center; justify-content: center;
-            z-index: 9999;
-        }
-        .sending-modal {
-            background: #fff;
-            padding: 40px 30px;
-            border-radius: 12px;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.08);
-            text-align: center;
-            width: 400px;
-            max-width: 90vw;
-            border: 1px solid rgba(0,0,0,0.05);
-        }
-        .sending-icon {
-            color: #534AB7;
-            margin-bottom: 16px;
-            display: flex;
-            justify-content: center;
-        }
-        .sending-icon svg {
-            width: 42px;
-            height: 42px;
-        }
-        .sending-title {
-            font-size: 18px;
-            font-weight: 500;
-            color: #555;
-            margin-bottom: 24px;
-        }
-        .sending-progress-bg {
-            height: 14px;
-            background: #eef2f6;
-            border-radius: 8px;
-            overflow: hidden;
-            margin-bottom: 16px;
-        }
-        .sending-progress-fill {
-            height: 100%;
-            width: 0;
-            background-color: #3b82f6;
-            background-image: linear-gradient(
-                -45deg,
-                rgba(255, 255, 255, 0.2) 25%,
-                transparent 25%,
-                transparent 50%,
-                rgba(255, 255, 255, 0.2) 50%,
-                rgba(255, 255, 255, 0.2) 75%,
-                transparent 75%,
-                transparent
-            );
-            background-size: 30px 30px;
-            animation: progress-stripes 1s linear infinite;
-            transition: width 0.1s linear;
-        }
-        @keyframes progress-stripes {
-            0% { background-position: 0 0; }
-            100% { background-position: 30px 0; }
-        }
-        .sending-status-text {
-            font-size: 13px;
-            color: #777;
-            margin-bottom: 6px;
-        }
-        .sending-count-text {
-            font-size: 12px;
-            color: #999;
-        }
-        .alert { padding: 10px 16px; border-radius: 8px; font-size: 13px; display: flex; align-items: center; gap: 8px; margin: 12px 18px 0; }
-        .alert-success { background: #EAF3DE; border: 0.5px solid #97C459; color: #3B6D11; }
-        .alert-error { background: #FCEBEB; border: 0.5px solid #F09595; color: #A32D2D; }
-        .cc-toggle { font-size: 12px; color: #aaa; cursor: pointer; padding: 2px 6px; }
-        .cc-toggle:hover { color: #666; }
-        .hidden { display: none; }
-    </style>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Darwin Office Support — Mail Sender</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    :root{
+      --bg:#f4f4f2;--surface:#fff;--surface2:#fafaf9;--border:rgba(0,0,0,.08);--border2:rgba(0,0,0,.05);
+      --text:#111;--text2:#555;--text3:#999;
+      --accent:#534AB7;--accent2:#3C3489;--accent-bg:#EEEDFE;--accent-bd:#AFA9EC;
+      --green:#3B6D11;--green-bg:#EAF3DE;--green-bd:#97C459;
+      --red:#A32D2D;--red-bg:#FCEBEB;--red-bd:#F09595;
+      --amber:#854F0B;--amber-bg:#FAEEDA;--amber-bd:#EF9F27;
+      --shadow:0 4px 24px rgba(0,0,0,.06);--r:10px;--r-lg:14px;--r-sm:6px;
+      --font:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+    }
+    [data-theme=dark]{
+      --bg:#0f0f11;--surface:#1a1a1f;--surface2:#22222a;--border:rgba(255,255,255,.08);--border2:rgba(255,255,255,.04);
+      --text:#f0f0f0;--text2:#a0a0b0;--text3:#606070;
+      --accent:#7B72E0;--accent2:#9D97E8;--accent-bg:#1e1a40;--accent-bd:#4a4490;
+      --green:#7DC951;--green-bg:#1a2d0a;--green-bd:#4a8020;
+      --red:#E05555;--red-bg:#2d0a0a;--red-bd:#803030;
+      --amber:#D4860F;--amber-bg:#2d1a00;--amber-bd:#8a5010;
+      --shadow:0 4px 24px rgba(0,0,0,.4);
+    }
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh;transition:background .2s,color .2s}
+    .screen{display:none;min-height:100vh;flex-direction:column}
+    .screen.active{display:flex}
+
+    /* BUTTONS */
+    .btn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:var(--r-sm);border:.5px solid var(--border);background:transparent;cursor:pointer;font-size:13px;font-weight:500;color:var(--text);font-family:var(--font);transition:all .15s}
+    .btn:hover{background:var(--surface2)}.btn:disabled{opacity:.4;cursor:not-allowed}
+    .btn-primary{background:var(--accent);border-color:var(--accent);color:#EEEDFE}.btn-primary:hover{background:var(--accent2)}
+    .btn-danger{background:var(--red);border-color:var(--red);color:#fff}.btn-danger:hover{opacity:.88}
+    .btn-sm{padding:4px 11px;font-size:11px}
+    .btn-full{width:100%;justify-content:center;padding:11px;font-size:14px}
+
+    /* TAGS */
+    .tag{display:inline-flex;align-items:center;gap:3px;background:var(--accent-bg);border:.5px solid var(--accent-bd);border-radius:20px;padding:2px 8px}
+    .tag span{font-size:11px;color:var(--accent)}
+    .tag button{background:none;border:none;cursor:pointer;color:var(--accent);font-size:13px;line-height:1;padding:0}
+
+    /* PILLS */
+    .pill{display:inline-flex;align-items:center;gap:3px;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:500}
+    .pill-ok{background:var(--green-bg);color:var(--green);border:.5px solid var(--green-bd)}
+    .pill-warn{background:var(--amber-bg);color:var(--amber);border:.5px solid var(--amber-bd)}
+    .pill-bad{background:var(--red-bg);color:var(--red);border:.5px solid var(--red-bd)}
+    .pill-accent{background:var(--accent-bg);color:var(--accent);border:.5px solid var(--accent-bd)}
+
+    /* SHELL */
+    .shell-hdr{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-bottom:.5px solid var(--border);background:var(--surface2);flex-shrink:0}
+    .count-pill{font-size:11px;color:var(--text2);background:var(--surface2);border:.5px solid var(--border);border-radius:20px;padding:3px 10px}
+    .dark-btn{background:none;border:.5px solid var(--border);border-radius:20px;padding:4px 10px;cursor:pointer;font-size:12px;color:var(--text2);font-family:var(--font)}
+    .dark-btn:hover{background:var(--surface2)}
+
+    /* FORM */
+    .field-row{display:flex;align-items:flex-start;padding:9px 16px;border-bottom:.5px solid var(--border2);gap:10px}
+    .field-label{font-size:10px;color:var(--text3);min-width:52px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;padding-top:4px;flex-shrink:0}
+    .bare-input{border:none;outline:none;background:transparent;font-size:13px;color:var(--text);min-width:140px;font-family:var(--font);flex:1}
+    .subj-input{flex:1;border:none;outline:none;background:transparent;font-size:15px;font-weight:500;color:var(--text);font-family:var(--font)}
+    .ta{width:100%;border:.5px solid var(--border);border-radius:var(--r-sm);padding:10px 12px;font-size:12px;font-family:var(--font);color:var(--text);background:var(--surface2);resize:vertical;outline:none;min-height:80px}
+    .ta:focus{border-color:var(--accent);background:var(--surface)}
+
+    /* MODE TOGGLE */
+    .mode-bar{display:flex;background:var(--surface2);border-radius:var(--r-sm);padding:2px;gap:1px}
+    .mode-btn{border:none;background:transparent;border-radius:4px;padding:3px 10px;font-size:11px;font-weight:500;cursor:pointer;color:var(--text3);font-family:var(--font)}
+    .mode-btn.on{background:var(--surface);color:var(--text);border:.5px solid var(--border)}
+
+    /* TOOLBAR */
+    .toolbar{display:flex;align-items:center;gap:1px;padding:6px 12px;border-bottom:.5px solid var(--border2);background:var(--surface2);flex-wrap:wrap;flex-shrink:0}
+    .tb-btn{background:transparent;border:none;cursor:pointer;padding:5px 6px;border-radius:5px;display:flex;align-items:center;gap:3px;color:var(--text2);font-size:11px;font-family:var(--font)}
+    .tb-btn:hover{background:var(--bg);color:var(--text)}
+    .tb-div{width:.5px;height:16px;background:var(--border);margin:0 3px}
+
+    /* BODY EDITOR */
+    .body-area{padding:24px 32px;flex:1;display:flex;flex-direction:column;background:var(--bg);align-items:center;min-height:240px;overflow-y:auto}
+    .body-editor{width:100%;max-width:720px;border:.5px solid var(--border);outline:none;background:var(--surface);font-size:14px;color:var(--text);line-height:1.8;font-family:var(--font);min-height:220px;padding:32px 40px;border-radius:var(--r)}
+
+    /* ATTACH */
+    .attach-area{display:flex;flex-wrap:wrap;gap:6px;padding:8px 16px;border-top:.5px solid var(--border2)}
+    .attach-area:empty{display:none}
+    .attach-chip{display:flex;align-items:center;gap:6px;padding:5px 10px;border-radius:var(--r-sm);border:.5px solid var(--border);background:var(--surface);max-width:210px}
+    .attach-ext{width:26px;height:26px;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;flex-shrink:0}
+
+    /* ALERTS */
+    .alert{margin:8px 16px;padding:9px 12px;border-radius:var(--r-sm);font-size:12px;display:none;align-items:center;gap:8px}
+    .alert-ok{background:var(--green-bg);border:.5px solid var(--green-bd);color:var(--green)}
+    .alert-err{background:var(--red-bg);border:.5px solid var(--red-bd);color:var(--red)}
+
+    /* INLINE PROG */
+    .prog-wrap{display:none;padding:10px 16px;border-top:.5px solid var(--border2);background:var(--surface2);flex-shrink:0}
+    .prog-bg{height:5px;background:var(--bg);border-radius:3px;overflow:hidden}
+    .prog-fill{height:100%;border-radius:3px;background:var(--accent);transition:width .12s linear}
+
+    /* SENDING MODAL */
+    .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);backdrop-filter:blur(6px);display:none;align-items:center;justify-content:center;z-index:999}
+    .modal-overlay.open{display:flex}
+    .modal-box{background:var(--surface);border:.5px solid var(--border);border-radius:var(--r-lg);padding:40px 36px;text-align:center;width:420px;max-width:94vw;box-shadow:var(--shadow)}
+    .modal-icon{width:52px;height:52px;border-radius:14px;background:var(--accent-bg);display:flex;align-items:center;justify-content:center;margin:0 auto 16px}
+    .modal-icon svg{width:26px;height:26px;color:var(--accent)}
+    .modal-title{font-size:19px;font-weight:600;color:var(--text);margin-bottom:20px}
+    .modal-prog-bg{height:12px;background:var(--bg);border-radius:6px;overflow:hidden;margin-bottom:12px}
+    .modal-prog-fill{height:100%;border-radius:6px;background:var(--accent);transition:width .15s linear;position:relative;overflow:hidden}
+    .modal-prog-fill::after{content:'';position:absolute;inset:0;background:repeating-linear-gradient(-45deg,rgba(255,255,255,.15) 0,rgba(255,255,255,.15) 6px,transparent 6px,transparent 12px);background-size:24px 24px;animation:stripe .7s linear infinite}
+    @keyframes stripe{to{background-position:24px 0}}
+    .modal-pct{font-size:14px;color:var(--text2);margin-bottom:4px}
+    .modal-count{font-size:12px;color:var(--text3)}
+
+    /* WELCOME */
+    #s-welcome{align-items:center;justify-content:center;padding:40px 20px}
+    .wlc-card{background:var(--surface);border:.5px solid var(--border);border-radius:var(--r-lg);padding:40px 36px;max-width:460px;width:100%;text-align:center;box-shadow:var(--shadow)}
+    .wlc-logo{width:56px;height:56px;border-radius:14px;background:var(--accent-bg);display:flex;align-items:center;justify-content:center;margin:0 auto 18px}
+    .wlc-logo svg{width:26px;height:26px;color:var(--accent)}
+    .feat-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:22px}
+    .feat{background:var(--surface2);border:.5px solid var(--border2);border-radius:var(--r-sm);padding:14px 10px;text-align:left}
+    .feat-icon{font-size:18px;margin-bottom:6px}
+    .feat-title{font-size:12px;font-weight:500;color:var(--text)}
+    .feat-desc{font-size:11px;color:var(--text3);margin-top:2px;line-height:1.4}
+    .sender-row{background:var(--surface2);border:.5px solid var(--border2);border-radius:var(--r-sm);padding:12px 14px;display:flex;align-items:center;gap:10px;margin-bottom:18px;text-align:left}
+    .avatar{width:34px;height:34px;border-radius:50%;background:#CECBF6;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:#3C3489;flex-shrink:0}
+
+    /* VERIFY PANEL */
+    .verify-panel{background:var(--surface2);border:.5px solid var(--border);border-radius:var(--r);margin:10px 16px;overflow:hidden}
+    .verify-header{padding:10px 14px;border-bottom:.5px solid var(--border);display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none}
+    .verify-body{padding:12px 14px;display:none}
+    .verify-body.open{display:block}
+    .vresult-row{display:grid;grid-template-columns:minmax(0,1fr) 52px 36px 36px 36px 72px;border-bottom:.5px solid var(--border2);font-size:11px}
+    .vresult-row:hover{background:var(--surface2)}
+    .vresult-hdr{display:grid;grid-template-columns:minmax(0,1fr) 52px 36px 36px 36px 72px;background:var(--surface2);border-bottom:.5px solid var(--border);font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--text3)}
+    .vcell{padding:7px 8px;display:flex;align-items:center;min-width:0;overflow:hidden}
+    .score-bar{height:3px;background:var(--border);border-radius:2px;margin-top:2px;overflow:hidden}
+    .score-fill{height:100%;border-radius:2px}
+
+    /* METRICS */
+    #s-metrics{background:var(--bg)}
+    .metrics-body{padding:18px;overflow-y:auto;flex:1}
+    .m-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:16px}
+    .m-card{background:var(--surface);border:.5px solid var(--border);border-radius:var(--r);padding:14px 16px}
+    .m-lbl{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--text3);margin-bottom:4px}
+    .m-val{font-size:22px;font-weight:500;color:var(--text)}
+    .m-sub{font-size:10px;color:var(--text3);margin-top:2px}
+    .sec-title{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);margin-bottom:10px}
+    .charts-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px}
+    .chart-card{background:var(--surface);border:.5px solid var(--border);border-radius:var(--r);padding:14px 16px}
+    .chart-title{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--text3);margin-bottom:10px}
+    .camp-card{background:var(--surface);border:.5px solid var(--border);border-radius:var(--r);padding:14px 18px;margin-bottom:10px}
+    .dbar{display:flex;height:5px;border-radius:3px;overflow:hidden;gap:2px;margin-top:10px}
+    .dbar-g{background:#4a9020;border-radius:3px;transition:width .5s}
+    .dbar-r{background:#c03030;border-radius:3px;transition:width .5s}
+    .empty-state{text-align:center;padding:40px 20px;color:var(--text3);font-size:13px}
+    .hidden{display:none}
+    .bulk-panel{display:none;width:100%;flex-direction:column;gap:6px;padding:4px 0}
+    .spinner{display:inline-block;width:13px;height:13px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite}
+    @keyframes spin{to{transform:rotate(360deg)}}
+
+    /* VERIFY MODAL STYLE */
+    .verify-modal-box {
+      background: var(--surface);
+      border: .5px solid var(--border);
+      border-radius: var(--r-lg);
+      padding: 24px 28px;
+      width: 680px;
+      max-width: 94vw;
+      max-height: 85vh;
+      box-shadow: var(--shadow);
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      animation: modalFadeIn 0.25s ease-out;
+    }
+    @keyframes modalFadeIn {
+      from { transform: scale(0.96); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+    .verify-modal-hdr {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: .5px solid var(--border);
+      padding-bottom: 12px;
+    }
+    .verify-modal-title {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .verify-modal-body {
+      flex: 1;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      padding-right: 4px;
+    }
+    .verify-modal-ftr {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 10px;
+      border-top: .5px solid var(--border);
+      padding-top: 14px;
+    }
+  </style>
 </head>
 <body>
 
-<div class="composer">
+<!-- SENDING MODAL -->
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal-box">
+    <div class="modal-icon">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+    </div>
+    <div class="modal-title">Sending Emails…</div>
+    <div class="modal-prog-bg"><div class="modal-prog-fill" id="modal-fill" style="width:0%"></div></div>
+    <div class="modal-pct" id="modal-pct">Sending… 0%</div>
+    <div class="modal-count" id="modal-count">0 / 0 emails sent</div>
+  </div>
+</div>
 
-    <!-- Success Alert -->
-    <div class="alert alert-success hidden" id="alert-success">
-        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-            <circle cx="7" cy="7" r="6" stroke="currentColor" stroke-width="1.2"/>
-            <path d="M4.5 7l2 2 3-3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-        <span id="success-message">Mail sent!</span>
+<!-- VERIFICATION RESULTS MODAL -->
+<div class="modal-overlay" id="verify-modal-overlay">
+  <!-- LOADING CARD -->
+  <div class="verify-loading-box" id="vm-loading-card" style="display:none">
+    <div class="v-loading-title">🛡️ Pre-flight List Verification</div>
+    <div class="v-loading-desc">Running deep syntax, MX record, SMTP mailbox probe, and blacklist checks on your recipients. No emails are sent during this process.</div>
+    <div class="v-prog-bg">
+      <div class="v-prog-fill" id="vm-prog-fill" style="width:0%"></div>
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:2px;font-size:11px">
+      <span id="vm-prog-detail" style="color:var(--text2)">Starting checks...</span>
+      <span id="vm-prog-pct" style="font-weight:600;color:var(--accent)">0%</span>
+    </div>
+  </div>
+
+  <!-- RESULTS CARD -->
+  <div class="verify-modal-box" id="vm-results-card" style="display:none">
+    <div class="verify-modal-hdr">
+      <div class="verify-modal-title">🛡️ Email Verification Results</div>
+      <button class="dark-btn" onclick="closeVerifyModal()" style="border:none;background:transparent;font-size:18px;cursor:pointer;padding:0;color:var(--text2)">×</button>
+    </div>
+    <div class="verify-modal-body">
+      <!-- Warning Banner -->
+      <div id="vm-warn-banner" style="display:none;background:var(--amber-bg);border:.5px solid var(--amber-bd);border-radius:var(--r-sm);padding:10px 12px;font-size:12px;color:var(--amber);line-height:1.5"></div>
+
+      <!-- Explanatory Legend -->
+      <div style="background:var(--surface2);border:.5px solid var(--border);border-radius:var(--r-sm);padding:10px 12px;font-size:11px;color:var(--text2);line-height:1.5;display:grid;grid-template-columns:1fr 1fr;gap:8px 12px">
+        <div><strong>🏆 Score:</strong> Overall deliverability grade from 0 to 100.</div>
+        <div><strong>🌐 MX:</strong> Domain is configured to receive emails.</div>
+        <div><strong>✉️ SMTP:</strong> Server confirmed the mailbox exists.</div>
+        <div><strong>🛡️ BL (Blacklist):</strong> IP/domain is clean of spam records.</div>
+      </div>
+
+      <!-- Stats Grid -->
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;" id="vm-stats-grid"></div>
+
+      <!-- Filter tabs -->
+      <div style="display:flex;gap:2px;background:var(--surface2);border-radius:var(--r-sm);padding:2px;width:fit-content" id="vm-tabs"></div>
+
+      <!-- Table of results -->
+      <div style="display:flex;flex-direction:column;border:.5px solid var(--border);border-radius:var(--r);overflow:hidden">
+        <div class="vresult-hdr">
+          <div class="vcell">Email</div>
+          <div class="vcell" title="Overall deliverability grade from 0 to 100">Score ⓘ</div>
+          <div class="vcell" title="Domain is configured to receive emails (Mail Exchange record exists)">MX ⓘ</div>
+          <div class="vcell" title="The mail server confirmed that this mailbox exists">SMTP ⓘ</div>
+          <div class="vcell" title="The domain and its mail server IP are clean of spam blacklists">BL ⓘ</div>
+          <div class="vcell">Status</div>
+        </div>
+        <div id="vm-rows" style="max-height:200px;overflow-y:auto;background:var(--surface)"></div>
+      </div>
+    </div>
+    <div class="verify-modal-ftr">
+      <button class="btn" id="vm-btn-cancel" onclick="onVerifyModalCancel()" style="margin-right:auto">Cancel Send</button>
+      <button class="btn" id="vm-btn-all" onclick="onVerifyModalAll()" style="color:var(--red);border-color:var(--red-bd)">Send to All anyway</button>
+      <button class="btn btn-primary" id="vm-btn-safe" onclick="onVerifyModalSafe()">Send to Safe Only (Recommended)</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════ WELCOME ══════════════════════════════ -->
+<div class="screen active" id="s-welcome">
+  <div class="wlc-card">
+    <div class="wlc-logo">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+    </div>
+    <div style="font-size:20px;font-weight:600;color:var(--text);margin-bottom:6px">Darwin Office Support</div>
+    <div style="font-size:13px;color:var(--text2);line-height:1.6;margin-bottom:22px">Compose personalised emails to thousands of recipients. Verify lists, attach files, and track every delivery.</div>
+
+    <div class="feat-grid">
+      <div class="feat"><div class="feat-icon">👥</div><div class="feat-title">Bulk recipients</div><div class="feat-desc">Paste thousands at once</div></div>
+      <div class="feat"><div class="feat-icon">🛡️</div><div class="feat-title">Verification</div><div class="feat-desc">Pre-flight all addresses</div></div>
+      <div class="feat"><div class="feat-icon">📊</div><div class="feat-title">Live metrics</div><div class="feat-desc">Charts &amp; history</div></div>
     </div>
 
-    <!-- Error Alert -->
-    <div class="alert alert-error hidden" id="alert-error">
-        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-            <circle cx="7" cy="7" r="6" stroke="currentColor" stroke-width="1.2"/>
-            <path d="M5 5l4 4M9 5l-4 4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
-        </svg>
-        <span id="error-message">Something went wrong.</span>
+    <div class="sender-row">
+      <div class="avatar">DC</div>
+      <div style="flex:1">
+        <div style="font-size:13px;font-weight:500;color:var(--text)">Darwin Cox</div>
+        <div style="font-size:11px;color:var(--text3)">cox.darwin@darwin-officesupport.online</div>
+      </div>
+      <span class="pill pill-ok">● Connected</span>
     </div>
 
- <!-- Validation errors will be shown in the error alert above -->
+    <div style="display:flex;gap:8px;align-items:stretch">
+      <button class="btn btn-primary btn-full" onclick="goTo('s-compose')" style="flex:1">✏️ Compose email</button>
+      <button class="dark-btn" onclick="toggleDark()" style="padding:0 14px">🌙</button>
+    </div>
+  </div>
+</div>
 
-    <form action="#" method="post" id="mail-form">
+<!-- ══════════════════════════════ COMPOSE ══════════════════════════════ -->
+<div class="screen" id="s-compose">
+  <div class="shell-hdr">
+    <div style="display:flex;align-items:center;gap:8px">
+      <button class="btn btn-sm" onclick="goTo('s-welcome')">← Home</button>
+      <div class="avatar" style="width:28px;height:28px;font-size:10px">DC</div>
+      <div>
+        <div style="font-size:12px;font-weight:500;color:var(--text)">Darwin Cox</div>
+        <div style="font-size:10px;color:var(--text3)">cox.darwin@darwin-officesupport.online</div>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:6px">
+      <span class="count-pill" id="rcpt-pill">0 recipients</span>
+      <button class="btn btn-sm" onclick="goTo('s-metrics')">📊 Metrics</button>
+      <button class="btn btn-sm" onclick="saveDraft()">💾 Draft</button>
+      <button class="dark-btn" onclick="toggleDark()">🌙</button>
+      <button class="btn btn-sm btn-primary" id="send-btn" onclick="sendMail()">
+        <svg width="11" height="11" viewBox="0 0 14 14" fill="none"><path d="M1 1l12 6-12 6V8.5l9-1.5-9-1.5V1z" fill="currentColor"/></svg>
+        Send
+      </button>
+    </div>
+  </div>
 
-        <!-- ── Header ──────────────────────────────────────────────────────── -->
-        <div class="composer-header">
-            <div class="header-left">
-                <div class="avatar">DC</div>
-                <div style="display:flex;flex-direction:column;">
-                    <span class="sender-name">Darwin Cox</span>
-                    <span class="sender-email">cox.darwin@darwin-officesupport.online</span>
-                </div>
-            </div>
+  <div class="alert alert-ok" id="a-ok" style="display:none">
+    ✓ <span id="ok-msg">Emails sent!</span>
+    <button class="btn btn-sm" style="margin-left:auto;border-color:var(--green-bd);color:var(--green);font-size:11px" onclick="goTo('s-metrics')">View metrics →</button>
+  </div>
+  <div class="alert alert-err" id="a-err" style="display:none">✕ <span id="err-msg">Something went wrong.</span></div>
+
+  <!-- TO -->
+  <div class="field-row" style="flex-direction:column;gap:7px;align-items:flex-start">
+    <div style="display:flex;align-items:center;justify-content:space-between;width:100%">
+      <div style="display:flex;align-items:center;gap:8px">
+        <span class="field-label">To</span>
+        <div class="mode-bar">
+          <button class="mode-btn on" id="mb-single" onclick="setMode('single')">Single</button>
+          <button class="mode-btn" id="mb-bulk" onclick="setMode('bulk')">Bulk paste</button>
         </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <button class="btn btn-sm" id="verify-btn" onclick="runVerification()" style="font-size:11px;padding:3px 10px">🛡️ Verify list</button>
+        <span style="font-size:11px;color:var(--text3);cursor:pointer;text-decoration:underline" onclick="toggleCcBcc()">Cc / Bcc</span>
+      </div>
+    </div>
+    <div id="panel-single" style="width:100%">
+      <div id="to-tags" style="display:flex;flex-wrap:wrap;gap:4px;align-items:center;min-height:26px">
+        <input class="bare-input" id="to-input" placeholder="Type email and press Enter or comma…" autocomplete="off" onkeydown="handleKey(event)" onpaste="handlePaste(event)"/>
+      </div>
+    </div>
+    <div class="bulk-panel" id="panel-bulk">
+      <textarea class="ta" id="bulk-ta" placeholder="Paste emails — one per line, comma or semicolon:&#10;alice@example.com&#10;bob@example.com, carol@example.com" oninput="parseBulk()"></textarea>
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <span style="font-size:11px;color:var(--text3)" id="bulk-status">Start pasting…</span>
+        <button class="btn btn-sm btn-primary" onclick="applyBulk()" style="font-size:11px;padding:3px 10px">Apply ✓</button>
+      </div>
+      <div id="bulk-preview" style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px"></div>
+    </div>
+  </div>
 
-        <!-- ── To ─────────────────────────────────────────────────────────── -->
-        <div class="field-row">
-            <span class="field-label">To</span>
-            <div class="tags-area" id="to-tags">
-                <input class="bare-input" id="to-input"
-                       placeholder="Add recipient and press Enter…"
-                       autocomplete="off"
-                       onkeydown="addRecipient(event)"/>
-            </div>
-            <!-- Hidden field carries comma-separated recipients to the controller -->
-            <input type="hidden" name="recipientsRaw" id="recipients-hidden" value=""/>
-            <span class="cc-toggle" onclick="toggleCC()">Cc / Bcc</span>
-        </div>
 
-        <!-- ── Cc ─────────────────────────────────────────────────────────── -->
-        <div class="field-row hidden" id="cc-row">
-            <span class="field-label">Cc</span>
-            <input class="bare-input" id="cc-input" name="cc" placeholder="Add cc…"/>
-        </div>
 
-        <!-- ── Bcc ────────────────────────────────────────────────────────── -->
-        <div class="field-row hidden" id="bcc-row">
-            <span class="field-label">Bcc</span>
-            <input class="bare-input" id="bcc-input" name="bcc" placeholder="Add bcc…"/>
-        </div>
+  <!-- CC / BCC -->
+  <div class="field-row hidden" id="cc-row"><span class="field-label">Cc</span><input class="bare-input" id="cc-input" placeholder="Add cc…"/></div>
+  <div class="field-row hidden" id="bcc-row"><span class="field-label">Bcc</span><input class="bare-input" id="bcc-input" placeholder="Add bcc…"/></div>
 
-        <!-- ── Subject ────────────────────────────────────────────────────── -->
-        <div class="field-row">
-            <span class="field-label">Subject</span>
-            <input class="subject-input" id="subject-input" name="subject" placeholder="Email subject" required/>
-        </div>
+  <!-- Subject & Campaign -->
+  <div class="field-row"><span class="field-label">Subject</span><input class="subj-input" id="subj" placeholder="Email subject…"/></div>
+  <div class="field-row"><span class="field-label">Campaign</span><input class="bare-input" id="campaign" placeholder="Optional label for metrics (e.g. June Newsletter)…"/></div>
 
-        <!-- ── Rich Text Toolbar ──────────────────────────────────────────── -->
-        <div class="toolbar">
-            <button type="button" class="tool-btn" onclick="fmt('bold')" title="Bold">
-                <svg viewBox="0 0 16 16" fill="none">
-                    <path d="M4 3h5a3 3 0 010 6H4V3zM4 9h5.5a3.5 3.5 0 010 7H4V9z"
-                          stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/>
-                </svg>
-            </button>
-            <button type="button" class="tool-btn" onclick="fmt('italic')" title="Italic">
-                <svg viewBox="0 0 16 16" fill="none">
-                    <path d="M6 3h6M4 13h6M9 3l-2 10"
-                          stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
-                </svg>
-            </button>
-            <button type="button" class="tool-btn" onclick="fmt('underline')" title="Underline">
-                <svg viewBox="0 0 16 16" fill="none">
-                    <path d="M4 3v5a4 4 0 008 0V3M2 13h12"
-                          stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
-                </svg>
-            </button>
-            <div class="tool-divider"></div>
-            <!-- Font Size -->
-            <select class="tool-btn" onchange="fmt('fontSize', this.value); this.selectedIndex=0;" style="width: 60px;">
-                <option value="" disabled selected>Size</option>
-                <option value="1">Small</option>
-                <option value="3">Normal</option>
-                <option value="5">Large</option>
-                <option value="7">Huge</option>
-            </select>
-            <!-- Text Color -->
-            <input type="color" class="tool-btn" onchange="fmt('foreColor', this.value)" title="Text Color" style="width: 30px; padding: 2px;">
-            <!-- Highlight Color -->
-            <input type="color" class="tool-btn" onchange="fmt('hiliteColor', this.value)" title="Highlight Color" value="#ffff00" style="width: 30px; padding: 2px;">
-            <div class="tool-divider"></div>
-            <button type="button" class="tool-btn" onclick="fmt('insertUnorderedList')" title="Bullet list">
-                <svg viewBox="0 0 16 16" fill="none">
-                    <circle cx="3" cy="5" r="1.2" fill="currentColor"/>
-                    <circle cx="3" cy="9" r="1.2" fill="currentColor"/>
-                    <circle cx="3" cy="13" r="1.2" fill="currentColor"/>
-                    <path d="M6 5h8M6 9h8M6 13h8" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
-                </svg>
-            </button>
-            <button type="button" class="tool-btn" onclick="fmt('insertOrderedList')" title="Numbered list">
-                <svg viewBox="0 0 16 16" fill="none">
-                    <path d="M6 5h8M6 9h8M6 13h8" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
-                    <path d="M3 3.5v3M3 3.5H2M2 6.5h2" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/>
-                    <path d="M2 9.5h2l-2 3h2" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>
-            </button>
-            <div class="tool-divider"></div>
-            <button type="button" class="tool-btn" onclick="triggerUpload('image/*')" title="Attach image">
-                <svg viewBox="0 0 16 16" fill="none">
-                    <rect x="1.5" y="3" width="13" height="10" rx="1.5" stroke="currentColor" stroke-width="1.3"/>
-                    <circle cx="5.5" cy="6.5" r="1.2" fill="currentColor"/>
-                    <path d="M1.5 10.5l4-3 3 2.5 2-1.5 3 3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>
-                <span>Image</span>
-            </button>
-            <button type="button" class="tool-btn" onclick="triggerUpload('video/*')" title="Attach video">
-                <svg viewBox="0 0 16 16" fill="none">
-                    <rect x="1" y="3.5" width="10" height="9" rx="1.5" stroke="currentColor" stroke-width="1.3"/>
-                    <path d="M11 6.5l4-2v7l-4-2V6.5z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/>
-                </svg>
-                <span>Video</span>
-            </button>
-            <button type="button" class="tool-btn" onclick="triggerUpload('.pdf')" title="Attach PDF">
-                <svg viewBox="0 0 16 16" fill="none">
-                    <path d="M3 2h7l3 3v9a1 1 0 01-1 1H3a1 1 0 01-1-1V3a1 1 0 011-1z"
-                          stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/>
-                    <path d="M10 2v4h3" stroke="currentColor" stroke-width="1.3"/>
-                    <path d="M5 9h6M5 11.5h4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
-                </svg>
-                <span>PDF</span>
-            </button>
-            <button type="button" class="tool-btn" onclick="triggerUpload('*')" title="Attach any file">
-                <svg viewBox="0 0 16 16" fill="none">
-                    <path d="M4 13.5A3.5 3.5 0 014 6.5l.5-.5M12 2.5A3.5 3.5 0 0112 9.5l-.5.5M6 10l4-4"
-                          stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
-                </svg>
-                <span>File</span>
-            </button>
-            <div class="tool-divider"></div>
-            <button type="button" class="tool-btn" onclick="insertLink()" title="Insert link">
-                <svg viewBox="0 0 16 16" fill="none">
-                    <path d="M6 10l-1.5 1.5a2.8 2.8 0 000 4 2.8 2.8 0 004 0L10 14M10 6l1.5-1.5a2.8 2.8 0 000-4 2.8 2.8 0 00-4 0L6 2M9.5 6.5l-3 3"
-                          stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
-                </svg>
-                <span>Link</span>
-            </button>
-            <div class="tool-divider"></div>
-            <button type="button" class="tool-btn" id="code-toggle-btn" onclick="toggleSourceMode()" title="Toggle Source Code">
-                <svg viewBox="0 0 16 16" fill="none">
-                    <path d="M5 4L1 8L5 12M11 4L15 8L11 12M9 3L7 13" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>
-                <span id="toggle-text">Source Code</span>
-            </button>
-            <div class="tool-divider"></div>
-            <!-- Actions moved to the far right -->
-            <div style="margin-left: auto; display: flex; gap: 8px; align-items: center;">
-                <button type="button" class="tool-btn" onclick="saveDraft()" style="background: #f0f0ee; color: #111; font-weight: 500;">Save Draft</button>
-                <button type="submit" class="btn-primary" id="send-btn" style="padding: 6px 20px;">
-                    <svg width="12" height="12" viewBox="0 0 14 14" fill="none">
-                        <path d="M1 1l12 6-12 6V8.5l9-1.5-9-1.5V1z" fill="currentColor"/>
-                    </svg>
-                    Send
-                </button>
-            </div>
-        </div>
+  <!-- Toolbar -->
+  <div class="toolbar">
+    <button class="tb-btn" onclick="fmt('bold')" title="Bold"><svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M4 3h5a3 3 0 010 6H4V3zM4 9h5.5a3.5 3.5 0 010 7H4V9z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg></button>
+    <button class="tb-btn" onclick="fmt('italic')" title="Italic"><svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M6 3h6M4 13h6M9 3l-2 10" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg></button>
+    <button class="tb-btn" onclick="fmt('underline')" title="Underline"><svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M4 3v5a4 4 0 008 0V3M2 13h12" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg></button>
+    <div class="tb-div"></div>
+    <select class="tb-btn" onchange="fmt('fontSize',this.value);this.selectedIndex=0" style="width:58px;border:none;outline:none;background:transparent;cursor:pointer;color:var(--text2)">
+      <option disabled selected>Size</option><option value="1">Small</option><option value="3">Normal</option><option value="5">Large</option><option value="7">Huge</option>
+    </select>
+    <input type="color" title="Text color" onchange="fmt('foreColor',this.value)" style="width:24px;height:22px;padding:1px;border:.5px solid var(--border);border-radius:4px;cursor:pointer;background:var(--surface2)">
+    <div class="tb-div"></div>
+    <button class="tb-btn" onclick="fmt('insertUnorderedList')">≡ List</button>
+    <button class="tb-btn" onclick="fmt('insertOrderedList')">1. List</button>
+    <div class="tb-div"></div>
+    <button class="tb-btn" onclick="triggerUpload('image/*')">📷 Image</button>
+    <button class="tb-btn" onclick="triggerUpload('.pdf')">📄 PDF</button>
+    <button class="tb-btn" onclick="triggerUpload('*')">📎 File</button>
+    <div class="tb-div"></div>
+    <button class="tb-btn" onclick="insertLink()">🔗 Link</button>
+    <button class="tb-btn" id="src-btn" onclick="toggleSource()"><span id="src-lbl">⟨/⟩ Source</span></button>
+  </div>
 
-        <!-- ── Body ───────────────────────────────────────────────────────── -->
-        <div class="body-area">
-            <div id="body-editor"
-                 contenteditable="true"
-                 class="body-editor"
-                 oninput="syncBody(); updateCount()">
-            </div>
-            <!-- Raw HTML Textarea (hidden by default) -->
-            <textarea id="raw-html-editor" 
-                      class="body-editor hidden" 
-                      style="font-family: monospace; padding: 10px; border: 1px solid #ddd; border-radius: 4px;"
-                      oninput="syncFromRaw(); updateCount()"></textarea>
-            
-            <!-- Hidden textarea synced by JS so the body is submitted with the form -->
-            <textarea name="body" id="body-hidden" style="display:none;"></textarea>
-        </div>
+  <div class="body-area">
+    <div id="body-vis" class="body-editor" contenteditable="true" style="display:block"></div>
+    <textarea id="body-raw" class="body-editor" style="display:none;font-family:monospace;font-size:12px;resize:none"></textarea>
+  </div>
 
-        <!-- ── Attachment chips (JS-rendered previews) ────────────────────── -->
-        <div class="attachments-area" id="attachments-area">
-        </div>
+  <div class="attach-area" id="attach-area"></div>
+  <input type="file" id="file-input" multiple style="display:none" onchange="handleFiles(event)"/>
 
-        <!-- ── Actual multipart file input ───────────────────────────────── -->
-        <input type="file" name="attachments" id="file-input"
-               multiple style="display:none" onchange="handleFiles(event)"/>
+  <div class="prog-wrap" id="prog-wrap">
+    <div style="display:flex;justify-content:space-between;margin-bottom:3px">
+      <span style="font-size:11px;color:var(--text2)" id="prog-txt">Sending…</span>
+      <span style="font-size:11px;font-weight:500;color:var(--accent)" id="prog-pct">0%</span>
+    </div>
+    <div class="prog-bg"><div class="prog-fill" id="prog-fill"></div></div>
+    <div style="font-size:10px;color:var(--text3);margin-top:3px" id="prog-cnt"></div>
+  </div>
+</div>
 
-        <!-- ── Embedded link chip ─────────────────────────────────────────── -->
-        <div class="link-row hidden" id="link-row">
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-                <path d="M6 10l-1.5 1.5a2.8 2.8 0 000 4 2.8 2.8 0 004 0L10 14M10 6l1.5-1.5a2.8 2.8 0 000-4 2.8 2.8 0 00-4 0L6 2"
-                      stroke="#185FA5" stroke-width="1.3" stroke-linecap="round"/>
-            </svg>
-            <div class="link-chip">
-                <span id="link-display"></span>
-                <button type="button"
-                        onclick="document.getElementById('link-hidden').value=''; document.getElementById('link-row').classList.add('hidden')"
-                        style="background:none;border:none;cursor:pointer;color:#185FA5;font-size:15px;padding:0;margin-left:4px;">×</button>
-            </div>
-            <input type="hidden" name="embeddedLink" id="link-hidden" value=""/>
-        </div>
+<!-- ══════════════════════════════ METRICS ══════════════════════════════ -->
+<div class="screen" id="s-metrics">
+  <div class="shell-hdr">
+    <div style="display:flex;align-items:center;gap:8px">
+      <button class="btn btn-sm" onclick="goTo('s-welcome')">← Home</button>
+      <span style="font-size:13px;font-weight:600;color:var(--text)">Delivery metrics</span>
+    </div>
+    <div style="display:flex;gap:6px;align-items:center">
+      <button class="dark-btn" onclick="toggleDark()">🌙</button>
+      <button class="btn btn-sm" onclick="loadMetrics()">↻ Refresh</button>
+      <button class="btn btn-sm btn-primary" onclick="goTo('s-compose')">✏️ New campaign</button>
+    </div>
+  </div>
 
-        <!-- ── Sending Modal Overlay ──────────────────────────────────────────── -->
-        <div class="modal-overlay" id="sending-modal-overlay">
-            <div class="sending-modal">
-                <div class="sending-icon">
-                    <svg viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
-                    </svg>
-                </div>
-                <div class="sending-title">Sending Emails...</div>
-                <div class="sending-progress-bg">
-                    <div class="sending-progress-fill" id="modal-progress-fill"></div>
-                </div>
-                <div class="sending-status-text" id="modal-status-text">Sending... 0%</div>
-                <div class="sending-count-text" id="modal-count-text">0 / 0 emails sent</div>
-            </div>
-        </div>
+  <div class="metrics-body">
+    <div class="m-grid">
+      <div class="m-card"><div class="m-lbl">Campaigns</div><div class="m-val" id="m-camps">—</div></div>
+      <div class="m-card"><div class="m-lbl">Requested</div><div class="m-val" id="m-req">—</div></div>
+      <div class="m-card"><div class="m-lbl">Delivered</div><div class="m-val" style="color:var(--green)" id="m-sent">—</div></div>
+      <div class="m-card"><div class="m-lbl">Failed</div><div class="m-val" style="color:var(--red)" id="m-fail">—</div></div>
+      <div class="m-card"><div class="m-lbl">Delivery rate</div><div class="m-val" id="m-rate">—</div><div class="m-sub">overall</div></div>
+    </div>
 
-    </form>
+    <div class="charts-grid" id="charts-section" style="display:none">
+      <div class="chart-card"><div class="chart-title">Campaign history</div><canvas id="bar-chart" height="160"></canvas></div>
+      <div class="chart-card"><div class="chart-title">Overall breakdown</div><canvas id="pie-chart" height="160"></canvas></div>
+    </div>
+
+    <div class="sec-title">Recent campaigns</div>
+    <div id="camp-list"><div class="empty-state">📭 No campaigns yet. Send your first email to see metrics here.</div></div>
+  </div>
 </div>
 
 <script>
-    /* ── Formatting ──────────────────────────────────────────────────────── */
-    function fmt(cmd, val = null) {
-        document.getElementById('body-editor').focus();
-        document.execCommand(cmd, false, val);
-        syncBody();
+  /* ═══════════════════════════════════════════════
+     STATE
+  ═══════════════════════════════════════════════ */
+  var S = {
+    recipients: [],
+    selFiles:   [],
+    srcMode:    false,
+    bulkParsed: [],
+    verifyResults: [],
+    verifyFilter:  'all',
+    dark: localStorage.getItem('dark') === '1'
+  };
+  var Charts = { bar: null, pie: null };
+
+  /* ═══════════════════════════════════════════════
+     DARK MODE
+  ═══════════════════════════════════════════════ */
+  function applyTheme() {
+    document.documentElement.setAttribute('data-theme', S.dark ? 'dark' : 'light');
+    localStorage.setItem('dark', S.dark ? '1' : '0');
+    if (Charts.bar || Charts.pie) loadMetrics();
+  }
+  function toggleDark() { S.dark = !S.dark; applyTheme(); }
+  applyTheme();
+
+  /* ═══════════════════════════════════════════════
+     NAV
+  ═══════════════════════════════════════════════ */
+  function goTo(id) {
+    document.querySelectorAll('.screen').forEach(function(s){ s.classList.remove('active'); });
+    document.getElementById(id).classList.add('active');
+    if (id === 's-metrics') loadMetrics();
+  }
+
+  /* ═══════════════════════════════════════════════
+     RECIPIENTS
+  ═══════════════════════════════════════════════ */
+  function handleKey(e) {
+    if ((e.key==='Enter'||e.key===',') && e.target.value.trim()) {
+      e.preventDefault(); addEmail(e.target.value.trim().replace(/,+$/,'')); e.target.value='';
     }
-
-    /* ── Sync contenteditable → hidden textarea ──────────────────────────── */
-    let isSourceMode = false;
-
-    function syncBody() {
-        if (!isSourceMode) {
-            document.getElementById('body-hidden').value =
-                document.getElementById('body-editor').innerHTML;
-        }
-    }
-
-    function syncFromRaw() {
-        if (isSourceMode) {
-            document.getElementById('body-hidden').value =
-                document.getElementById('raw-html-editor').value;
-        }
-    }
-
-    function toggleSourceMode() {
-        const visual = document.getElementById('body-editor');
-        const raw = document.getElementById('raw-html-editor');
-        const btn = document.getElementById('code-toggle-btn');
-        const text = document.getElementById('toggle-text');
-
-        if (!isSourceMode) {
-            // Switching to Source Code mode
-            raw.value = visual.innerHTML;
-            visual.classList.add('hidden');
-            raw.classList.remove('hidden');
-            text.textContent = 'Visual Editor';
-            btn.style.background = '#EEEDFE';
-            isSourceMode = true;
-        } else {
-            // Switching to Visual Editor mode
-            visual.innerHTML = raw.value;
-            raw.classList.add('hidden');
-            visual.classList.remove('hidden');
-            text.textContent = 'Source Code';
-            btn.style.background = 'transparent';
-            isSourceMode = false;
-        }
-        syncBody();
-        syncFromRaw();
-    }
-
-    /* ── Character counter ───────────────────────────────────────────────── */
-    function updateCount() {
-        let content = '';
-        if (isSourceMode) {
-            content = document.getElementById('raw-html-editor').value;
-        } else {
-            content = document.getElementById('body-editor').innerText;
-        }
-        document.getElementById('char-count').textContent = (content || '').length + ' characters';
-    }
-
-    /* ── Recipient tag input ─────────────────────────────────────────────── */
-    function addRecipient(e) {
-        if ((e.key === 'Enter' || e.key === ',') && e.target.value.trim()) {
-            e.preventDefault();
-            const val = e.target.value.trim().replace(/,$/, '');
-            const container = document.getElementById('to-tags');
-            const tag = document.createElement('span');
-            tag.className = 'tag';
-            tag.innerHTML = '<span>' + val + '</span>'
-                + '<button type="button" class="tag-x" '
-                + 'onclick="this.closest(\'.tag\').remove(); syncRecipients()">×</button>';
-            container.insertBefore(tag, e.target);
-            e.target.value = '';
-            syncRecipients();
-        }
-    }
-
-    /* ── Sync tag pills → hidden input ───────────────────────────────────── */
-    function syncRecipients() {
-        const spans = document.querySelectorAll('#to-tags .tag span:first-child');
-        const pending = document.getElementById('to-input').value.trim();
-        let values = Array.from(spans).map(s => s.textContent);
-        if (pending) values.push(pending);
-        document.getElementById('recipients-hidden').value = values.join(',');
-    }
-
-    /* ── Show/hide Cc & Bcc rows ─────────────────────────────────────────── */
-    function toggleCC() {
-        ['cc-row', 'bcc-row'].forEach(id => {
-            document.getElementById(id).classList.toggle('hidden');
-        });
-    }
-
-    /* ── Trigger file picker ─────────────────────────────────────────────── */
-    const selectedFiles = [];
-
-    function triggerUpload(accept) {
-        const fi = document.getElementById('file-input');
-        fi.accept = accept;
-        fi.click();
-    }
-
-    /* ── Render attachment chips after file selection ────────────────────── */
-    function handleFiles(e) {
-        const area = document.getElementById('attachments-area');
-        Array.from(e.target.files).forEach(function(file) {
-            selectedFiles.push(file);
-            const ext = file.name.split('.').pop().toLowerCase();
-            const isImg = ['jpg','jpeg','png','gif','webp','svg'].includes(ext);
-            const isVid = ['mp4','mov','avi','webm','mkv'].includes(ext);
-            const isPdf = ext === 'pdf';
-            let bg = '#F1EFE8', color = '#444441';
-            if (isImg) { bg = '#EAF3DE'; color = '#3B6D11'; }
-            if (isVid) { bg = '#EEEDFE'; color = '#3C3489'; }
-            if (isPdf) { bg = '#FCEBEB'; color = '#A32D2D'; }
-            const size = file.size < 1024 * 1024
-                ? Math.round(file.size / 1024) + ' KB'
-                : (file.size / (1024 * 1024)).toFixed(1) + ' MB';
-            const chip = document.createElement('div');
-            chip.className = 'attach-chip';
-            chip.dataset.name = file.name;
-            chip.innerHTML =
-                '<div class="attach-icon" style="background:' + bg + ';color:' + color + ';">'
-                + ext.toUpperCase() + '</div>'
-                + '<div><div class="attach-name">' + file.name + '</div>'
-                + '<div class="attach-size">' + size + '</div></div>'
-                + '<button type="button" class="attach-remove" onclick="removeFile(this)">×</button>';
-            area.appendChild(chip);
-        });
-    }
-
-    function removeFile(btn) {
-        const chip = btn.closest('.attach-chip');
-        const name = chip.dataset.name;
-        const idx = selectedFiles.findIndex(f => f.name === name);
-        if (idx > -1) selectedFiles.splice(idx, 1);
-        chip.remove();
-    }
-
-    /* ── Insert link chip ────────────────────────────────────────────────── */
-    function insertLink() {
-        const url = prompt('Paste a URL:');
-        if (!url) return;
-        document.getElementById('link-hidden').value = url;
-        document.getElementById('link-display').textContent =
-            url.replace(/^https?:\/\//, '').split('/').slice(0, 2).join('/');
-        document.getElementById('link-row').classList.remove('hidden');
-    }
-
-    /* ── Helper: File to Base64 ──────────────────────────────────────────── */
-    function readFileAsBase64(file) {
-        return new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = () => resolve(reader.result.split(',')[1]);
-            reader.onerror = reject;
-            reader.readAsDataURL(file);
-        });
-    }
-
-    /* ── On submit: sync fields + fetch API ──────────────────────── */
-    document.getElementById('mail-form').addEventListener('submit', async function(e) {
-        e.preventDefault();
-        syncBody();
-        syncRecipients();
-
-        const btn = document.getElementById('send-btn');
-        const recipients = document.getElementById('recipients-hidden').value.split(',').filter(r => r.trim());
-        const subject = document.getElementById('subject-input').value;
-        const body = document.getElementById('body-hidden').value;
-
-        // Reset alerts
-        document.getElementById('alert-success').classList.add('hidden');
-        document.getElementById('alert-error').classList.add('hidden');
-
-        if (recipients.length === 0) {
-            document.getElementById('error-message').textContent = 'Please add at least one recipient.';
-            document.getElementById('alert-error').classList.remove('hidden');
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-            return;
-        }
-
-        btn.disabled = true;
-        btn.innerHTML = 'Sending…';
-
-        const totalCount = recipients.length;
-        const modalOverlay = document.getElementById('sending-modal-overlay');
-        const modalFill = document.getElementById('modal-progress-fill');
-        const modalStatus = document.getElementById('modal-status-text');
-        const modalCount = document.getElementById('modal-count-text');
-
-        modalOverlay.style.display = 'flex';
-        let w = 0;
-        let sentCount = 0;
-        
-        const iv = setInterval(() => {
-            const increment = (90 - w) * 0.1; 
-            w += increment > 0.5 ? increment : 0.5;
-            if (w >= 90) w = 90;
-            
-            modalFill.style.width = w.toFixed(1) + '%';
-            modalStatus.textContent = 'Sending... ' + w.toFixed(1) + '%';
-            sentCount = Math.floor((w / 100) * totalCount);
-            modalCount.textContent = sentCount.toLocaleString() + ' / ' + totalCount.toLocaleString() + ' emails sent';
-        }, 100);
-
-        try {
-            // Prepare attachments
-            const attachments = await Promise.all(selectedFiles.map(async (file) => ({
-                fileName: file.name,
-                contentType: file.type,
-                base64Content: await readFileAsBase64(file)
-            })));
-
-            // Construct payload: one MailPayload per recipient
-            const mails = recipients.map(to => ({
-                to: to.trim(),
-                subject: subject,
-                body: body,
-                html: true,
-                attachments: attachments
-            }));
-
-            const response = await fetch('/api/mails/send', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ mails: mails })
-            });
-
-            const result = await response.json().catch(() => ({}));
-            clearInterval(iv);
-            modalFill.style.width = '100%';
-            modalStatus.textContent = 'Sending... 100%';
-            modalCount.textContent = totalCount.toLocaleString() + ' / ' + totalCount.toLocaleString() + ' emails sent';
-
-            setTimeout(() => {
-                modalOverlay.style.display = 'none';
-                if (response.ok) {
-                    document.getElementById('alert-success').classList.remove('hidden');
-                    document.getElementById('alert-error').classList.add('hidden');
-                } else {
-                    document.getElementById('error-message').textContent = result.error || 'Failed to send mail';
-                    document.getElementById('alert-error').classList.remove('hidden');
-                }
-                btn.disabled = false;
-                btn.innerHTML = `<svg width="12" height="12" viewBox="0 0 14 14" fill="none" style="display:inline-block;vertical-align:middle;margin-right:6px;"><path d="M1 1l12 6-12 6V8.5l9-1.5-9-1.5V1z" fill="currentColor"/></svg>Send`;
-            }, 600);
-        } catch (err) {
-            clearInterval(iv);
-            document.getElementById('sending-modal-overlay').style.display = 'none';
-            console.error(err);
-            document.getElementById('error-message').textContent = 'An unexpected error occurred.';
-            document.getElementById('alert-error').classList.remove('hidden');
-            btn.disabled = false;
-            btn.innerHTML = `<svg width="12" height="12" viewBox="0 0 14 14" fill="none" style="display:inline-block;vertical-align:middle;margin-right:6px;"><path d="M1 1l12 6-12 6V8.5l9-1.5-9-1.5V1z" fill="currentColor"/></svg>Send`;
-        }
+  }
+  function handlePaste(e) {
+    e.preventDefault();
+    splitEmails((e.clipboardData||window.clipboardData).getData('text')).forEach(addEmail);
+    e.target.value='';
+  }
+  function splitEmails(raw) {
+    return raw.split(/[\n,;]+/).map(function(s){return s.trim().toLowerCase();}).filter(function(s){return s&&s.indexOf('@')>0;});
+  }
+  function addEmail(em) {
+    em = em.trim().toLowerCase();
+    if (em && em.indexOf('@')>0 && !S.recipients.includes(em)) { S.recipients.push(em); renderTags(); updatePill(); }
+  }
+  function removeRcpt(i) { S.recipients.splice(i,1); renderTags(); updatePill(); }
+  function renderTags() {
+    var c=document.getElementById('to-tags'), inp=document.getElementById('to-input');
+    c.innerHTML='';
+    S.recipients.forEach(function(r,i){
+      var t=document.createElement('span'); t.className='tag';
+      t.innerHTML='<span>'+esc(r)+'</span><button onclick="removeRcpt('+i+')" aria-label="Remove">×</button>';
+      c.appendChild(t);
     });
+    c.appendChild(inp);
+  }
+  function updatePill() {
+    var n=S.recipients.length;
+    document.getElementById('rcpt-pill').textContent=n+' recipient'+(n!==1?'s':'');
+  }
+  function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
-    /* ── Init ────────────────────────────────────────────────────────────── */
-    function saveDraft() {
-        syncBody();
-        syncFromRaw();
-        const draft = {
-            subject: document.getElementById('subject-input').value,
-            body: document.getElementById('body-hidden').value,
-            recipients: document.getElementById('recipients-hidden').value
-        };
-        localStorage.setItem('mail_draft', JSON.stringify(draft));
-        alert('Draft saved to your browser!');
-    }
+  /* ═══════════════════════════════════════════════
+     BULK
+  ═══════════════════════════════════════════════ */
+  function setMode(m) {
+    var bulk=m==='bulk';
+    document.getElementById('mb-single').classList.toggle('on',!bulk);
+    document.getElementById('mb-bulk').classList.toggle('on',bulk);
+    document.getElementById('panel-single').style.display=bulk?'none':'block';
+    document.getElementById('panel-bulk').style.display=bulk?'flex':'none';
+  }
+  function parseBulk() {
+    var raw=document.getElementById('bulk-ta').value;
+    S.bulkParsed=splitEmails(raw);
+    document.getElementById('bulk-status').textContent=S.bulkParsed.length+' valid email'+(S.bulkParsed.length!==1?'s':'')+' detected';
+    var prev=document.getElementById('bulk-preview'); prev.innerHTML='';
+    S.bulkParsed.slice(0,8).forEach(function(e){
+      var t=document.createElement('span');t.className='tag';t.innerHTML='<span>'+esc(e)+'</span>';prev.appendChild(t);
+    });
+    if(S.bulkParsed.length>8){var m=document.createElement('span');m.className='tag';m.style.background='var(--surface2)';m.innerHTML='<span style="color:var(--text3)">+'+(S.bulkParsed.length-8)+' more</span>';prev.appendChild(m);}
+  }
+  function applyBulk() {
+    S.bulkParsed.forEach(function(e){if(!S.recipients.includes(e))S.recipients.push(e);});
+    renderTags(); updatePill();
+    document.getElementById('bulk-ta').value='';
+    document.getElementById('bulk-preview').innerHTML='';
+    document.getElementById('bulk-status').textContent='Applied — '+S.recipients.length+' total';
+    setMode('single');
+  }
+  function toggleCcBcc(){['cc-row','bcc-row'].forEach(function(id){document.getElementById(id).classList.toggle('hidden');});}
 
-    function loadDraft() {
-        const saved = localStorage.getItem('mail_draft');
-        if (saved) {
-            const draft = JSON.parse(saved);
-            document.getElementById('subject-input').value = draft.subject || '';
-            document.getElementById('body-hidden').value = draft.body || '';
-            document.getElementById('body-editor').innerHTML = draft.body || '';
-            document.getElementById('raw-html-editor').value = draft.body || '';
-            
-            if (draft.recipients) {
-                const emails = draft.recipients.split(',').filter(e => e.trim());
-                emails.forEach(email => {
-                    const container = document.getElementById('to-tags');
-                    const input = document.getElementById('to-input');
-                    const tag = document.createElement('span');
-                    tag.className = 'tag';
-                    tag.innerHTML = '<span>' + email + '</span>'
-                        + '<button type="button" class="tag-x" '
-                        + 'onclick="this.closest(\'.tag\').remove(); syncRecipients()">×</button>';
-                    container.insertBefore(tag, input);
-                });
-                syncRecipients();
-            }
-            updateCount();
+  /* ═══════════════════════════════════════════════
+     VERIFICATION — calls real /api/verify endpoint
+  ═══════════════════════════════════════════════ */
+  /* VERIFICATION & LOADING MODAL LOGIC */
+  var verifyContext = 'verify';
+  var progressInterval = null;
+
+  function startVerificationProgress() {
+    document.getElementById('verify-modal-overlay').classList.add('open');
+    document.getElementById('vm-loading-card').style.display = 'flex';
+    document.getElementById('vm-results-card').style.display = 'none';
+
+    var bar = document.getElementById('vm-prog-fill');
+    var pctText = document.getElementById('vm-prog-pct');
+    var detailText = document.getElementById('vm-prog-detail');
+
+    bar.style.width = '0%';
+    pctText.textContent = '0%';
+    detailText.textContent = 'Analyzing email address syntax...';
+
+    var pct = 0;
+    if (progressInterval) clearInterval(progressInterval);
+
+    progressInterval = setInterval(function() {
+      if (pct < 90) {
+        var inc = (90 - pct) * 0.08;
+        pct += inc > 0.4 ? inc : 0.4;
+        if (pct >= 90) pct = 90;
+
+        bar.style.width = pct.toFixed(0) + '%';
+        pctText.textContent = Math.round(pct) + '%';
+
+        if (pct < 20) {
+          detailText.textContent = 'Analyzing email address syntax...';
+        } else if (pct < 45) {
+          detailText.textContent = 'Resolving domain MX records...';
+        } else if (pct < 70) {
+          detailText.textContent = 'Checking reputations against spam blacklists (DNSBL)...';
+        } else {
+          detailText.textContent = 'Probing mailbox existences (SMTP connection probes)...';
         }
+      }
+    }, 120);
+  }
+
+  function finishVerificationProgress(callback) {
+    if (progressInterval) clearInterval(progressInterval);
+    var bar = document.getElementById('vm-prog-fill');
+    var pctText = document.getElementById('vm-prog-pct');
+    var detailText = document.getElementById('vm-prog-detail');
+
+    bar.style.width = '100%';
+    pctText.textContent = '100%';
+    detailText.textContent = 'Verification complete!';
+
+    setTimeout(function() {
+      document.getElementById('vm-loading-card').style.display = 'none';
+      document.getElementById('vm-results-card').style.display = 'flex';
+      if (callback) callback();
+    }, 450);
+  }
+
+  async function runVerification() {
+    var all = S.recipients.slice();
+    var typed = document.getElementById('to-input').value.trim();
+    if (typed && typed.indexOf('@')>0) all.push(typed);
+    if (all.length === 0) { showErr('Add at least one recipient before verifying.'); return; }
+
+    var btn = document.getElementById('verify-btn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> Verifying…';
+
+    verifyContext = 'verify';
+    startVerificationProgress();
+
+    try {
+      var res = await fetch('/api/verify', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({emails: all})
+      });
+      if (!res.ok) throw new Error('Server error: ' + res.status);
+      var data = await res.json();
+      S.verifyResults = data.results || [];
+      
+      finishVerificationProgress(function() {
+        renderVerifyModalResults(data);
+      });
+    } catch (e) {
+      closeVerifyModal();
+      showErr('Verification failed: ' + e.message);
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = '🛡️ Verify list';
+    }
+  }
+
+  function closeVerifyModal() {
+    if (progressInterval) clearInterval(progressInterval);
+    document.getElementById('verify-modal-overlay').classList.remove('open');
+  }
+
+  function renderVerifyModalResults(data) {
+    var safe=data.safe, risky=data.risky, invalid=data.invalid, total=data.total;
+    var rate=data.safeRate||0;
+
+    var banner = document.getElementById('vm-warn-banner');
+    if (rate < 60) {
+      banner.style.display = 'block';
+      banner.innerHTML = '⚠️ <strong>Low list quality detected.</strong> Only ' + rate.toFixed(0) + '% of the list is safe. Sending to risky or invalid addresses may block your sender IP.';
+    } else {
+      banner.style.display = 'none';
     }
 
-    window.onload = loadDraft;
-    updateCount();
+    var grid = document.getElementById('vm-stats-grid');
+    grid.innerHTML = [
+      sumCell(safe, 'Safe', 'var(--green)'),
+      sumCell(risky, 'Risky', 'var(--amber)'),
+      sumCell(invalid, 'Invalid', 'var(--red)')
+    ].join('');
 
+    renderVerifyModalTabs('all');
+    renderVerifyModalRows('all');
 
+    var btnCancel = document.getElementById('vm-btn-cancel');
+    var btnAll = document.getElementById('vm-btn-all');
+    var btnSafe = document.getElementById('vm-btn-safe');
+
+    if (verifyContext === 'send') {
+      btnCancel.textContent = 'Cancel Send';
+      btnAll.textContent = 'Send to All anyway';
+      btnSafe.textContent = 'Send to Safe Only (Recommended)';
+    } else {
+      btnCancel.textContent = 'Close';
+      btnAll.textContent = 'Keep All';
+      btnSafe.textContent = 'Use Safe Only';
+    }
+  }
+
+  function sumCell(val, lbl, col) {
+    return '<div style="background:var(--surface2);border:.5px solid var(--border);border-radius:var(--r-sm);padding:10px 12px;text-align:center">'
+            +'<div style="font-size:18px;font-weight:500;color:'+col+'">'+val+'</div>'
+            +'<div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.04em">'+lbl+'</div>'
+            +'</div>';
+  }
+
+  function renderVerifyModalTabs(filter) {
+    var tabs=document.getElementById('vm-tabs');
+    var counts={all:S.verifyResults.length,safe:0,risky:0,invalid:0};
+    S.verifyResults.forEach(function(r){counts[r.status]=(counts[r.status]||0)+1;});
+    tabs.innerHTML=['all','safe','risky','invalid'].map(function(f){
+      var on=f===filter?'on':'';
+      var label=f.charAt(0).toUpperCase()+f.slice(1)+' ('+counts[f]+')';
+      return '<button class="mode-btn '+on+'" onclick="renderVerifyModalTabs(\''+f+'\');renderVerifyModalRows(\''+f+'\')">'+label+'</button>';
+    }).join('');
+  }
+
+  function renderVerifyModalRows(filter) {
+    var filtered=filter==='all'?S.verifyResults:S.verifyResults.filter(function(r){return r.status===filter;});
+    var rows=document.getElementById('vm-rows');
+    rows.innerHTML='';
+    if(!filtered.length){rows.innerHTML='<div style="padding:16px;text-align:center;font-size:12px;color:var(--text3)">No addresses in this category.</div>';return;}
+    filtered.forEach(function(r){
+      var sc=r.score||0;
+      var col=sc>=70?'var(--green)':sc>=40?'var(--amber)':'var(--red)';
+      var pillCls=r.status==='safe'?'pill-ok':r.status==='risky'?'pill-warn':'pill-bad';
+      var row=document.createElement('div');row.className='vresult-row';
+      row.title=r.reasons&&r.reasons.length?r.reasons.join(', '):'All checks passed';
+      row.innerHTML='<div class="vcell" style="flex-direction:column;align-items:flex-start;gap:1px">'
+              +'<span style="font-size:11px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%">'+esc(r.email)+'</span>'
+              +(r.reasons&&r.reasons.length?'<span style="font-size:10px;color:var(--text3)">'+esc(r.reasons[0])+'</span>':'')
+              +'</div>'
+              +'<div class="vcell"><span style="font-size:12px;font-weight:500;color:'+col+'">'+sc+'</span>'
+              +'<div style="width:28px;margin-left:4px"><div class="score-bar"><div class="score-fill" style="width:'+sc+'%;background:'+col+'"></div></div></div></div>'
+              +'<div class="vcell">'+(r.mx?'✓':'✗')+'</div>'
+              +'<div class="vcell">'+(r.smtp?'✓':'✗')+'</div>'
+              +'<div class="vcell">'+(r.blacklist?'✓':'✗')+'</div>'
+              +'<div class="vcell"><span class="pill '+pillCls+'" style="font-size:10px">'+r.status+'</span></div>';
+      rows.appendChild(row);
+    });
+  }
+
+  function onVerifyModalCancel() {
+    closeVerifyModal();
+  }
+
+  function onVerifyModalAll() {
+    closeVerifyModal();
+    if (verifyContext === 'send') {
+      proceedWithSending();
+    }
+  }
+
+  function onVerifyModalSafe() {
+    var safe=(S.verifyResults).filter(function(r){return r.status==='safe';}).map(function(r){return r.email;});
+    S.recipients=safe; renderTags(); updatePill();
+    closeVerifyModal();
+    if (verifyContext === 'send') {
+      if (safe.length === 0) {
+        showErr('No safe recipients remaining to send.');
+        return;
+      }
+      proceedWithSending();
+    }
+  }
+
+  /* ═══════════════════════════════════════════════
+     EDITOR
+  ═══════════════════════════════════════════════ */
+  function fmt(cmd,val){document.getElementById('body-vis').focus();document.execCommand(cmd,false,val||null);}
+  function toggleSource(){
+    var vis=document.getElementById('body-vis'),raw=document.getElementById('body-raw');
+    S.srcMode=!S.srcMode;
+    if(S.srcMode){raw.value=vis.innerHTML;vis.style.display='none';raw.style.display='block';document.getElementById('src-lbl').textContent='👁 Visual';document.getElementById('src-btn').style.background='var(--accent-bg)';}
+    else{vis.innerHTML=raw.value;raw.style.display='none';vis.style.display='block';document.getElementById('src-lbl').textContent='⟨/⟩ Source';document.getElementById('src-btn').style.background='';}
+  }
+  function getBody(){return S.srcMode?document.getElementById('body-raw').value:document.getElementById('body-vis').innerHTML;}
+
+  /* ═══════════════════════════════════════════════
+     ATTACHMENTS
+  ═══════════════════════════════════════════════ */
+  function triggerUpload(a){var fi=document.getElementById('file-input');fi.accept=a;fi.click();}
+  function handleFiles(e){
+    var area=document.getElementById('attach-area');
+    Array.from(e.target.files).forEach(function(file){
+      S.selFiles.push(file);
+      var ext=file.name.split('.').pop().toLowerCase();
+      var bg='#F1EFE8',col='#444441';
+      if(['jpg','jpeg','png','gif','webp'].includes(ext)){bg='var(--green-bg)';col='var(--green)';}
+      if(ext==='pdf'){bg='var(--red-bg)';col='var(--red)';}
+      var size=file.size<1048576?Math.round(file.size/1024)+' KB':(file.size/1048576).toFixed(1)+' MB';
+      var chip=document.createElement('div');chip.className='attach-chip';chip.dataset.name=file.name;
+      chip.innerHTML='<div class="attach-ext" style="background:'+bg+';color:'+col+'">'+ext.toUpperCase()+'</div>'
+              +'<div><div style="font-size:11px;font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:120px">'+esc(file.name)+'</div>'
+              +'<div style="font-size:10px;color:var(--text3)">'+size+'</div></div>'
+              +'<button style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:14px;margin-left:auto" onclick="rmAttach(this)">×</button>';
+      area.appendChild(chip);
+    });
+  }
+  function rmAttach(btn){var chip=btn.closest('.attach-chip');var idx=S.selFiles.findIndex(function(f){return f.name===chip.dataset.name;});if(idx>-1)S.selFiles.splice(idx,1);chip.remove();}
+  function insertLink(){var url=prompt('Paste a URL:');if(url)document.execCommand('createLink',false,url);}
+
+  /* ═══════════════════════════════════════════════
+     DRAFT
+  ═══════════════════════════════════════════════ */
+  function saveDraft(){
+    try{localStorage.setItem('mail_draft',JSON.stringify({subject:document.getElementById('subj').value,campaign:document.getElementById('campaign').value,body:getBody(),recipients:S.recipients.slice()}));alert('Draft saved!');}catch(e){alert('Could not save draft.');}
+  }
+  function loadDraft(){
+    try{
+      var d=JSON.parse(localStorage.getItem('mail_draft'));
+      if(!d)return;
+      if(d.subject)document.getElementById('subj').value=d.subject;
+      if(d.campaign)document.getElementById('campaign').value=d.campaign;
+      if(d.body){document.getElementById('body-vis').innerHTML=d.body;document.getElementById('body-raw').value=d.body;}
+      if(d.recipients&&d.recipients.length){S.recipients=d.recipients;renderTags();updatePill();}
+    }catch(e){}
+  }
+
+  /* ═══════════════════════════════════════════════
+     SEND — with modal
+  ═══════════════════════════════════════════════ */
+  function showModal(){document.getElementById('modal-overlay').classList.add('open');}
+  function hideModal(){document.getElementById('modal-overlay').classList.remove('open');}
+  function updateModal(pct,sent,total){
+    document.getElementById('modal-fill').style.width=pct.toFixed(1)+'%';
+    document.getElementById('modal-pct').textContent='Sending… '+pct.toFixed(1)+'%';
+    document.getElementById('modal-count').textContent=sent.toLocaleString()+' / '+total.toLocaleString()+' emails sent';
+  }
+
+  async function sendMail() {
+    var typed=document.getElementById('to-input').value.trim();
+    if(typed&&typed.indexOf('@')>0){addEmail(typed);document.getElementById('to-input').value='';}
+    document.getElementById('a-ok').style.display='none';
+    document.getElementById('a-err').style.display='none';
+    if(S.recipients.length===0){showErr('Please add at least one recipient.');return;}
+    var subj=document.getElementById('subj').value.trim();
+    if(!subj){showErr('Subject must not be blank.');return;}
+    var body=getBody().trim();
+    if(!body){showErr('Email body must not be blank.');return;}
+
+    var btn=document.getElementById('send-btn');
+    btn.disabled=true;
+    btn.innerHTML = '<span class="spinner"></span> Verifying…';
+
+    verifyContext = 'send';
+    startVerificationProgress();
+
+    try {
+      var all = S.recipients.slice();
+      var res = await fetch('/api/verify', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({emails: all})
+      });
+      if (!res.ok) throw new Error('Server error: ' + res.status);
+      var data = await res.json();
+      S.verifyResults = data.results || [];
+
+      var hasIssues = S.verifyResults.some(function(r){ return r.status !== 'safe'; });
+
+      finishVerificationProgress(function() {
+        if (hasIssues) {
+          renderVerifyModalResults(data);
+        } else {
+          closeVerifyModal();
+          proceedWithSending();
+        }
+      });
+    } catch(e) {
+      closeVerifyModal();
+      showErr('Verification failed: ' + e.message);
+    } finally {
+      btn.disabled=false;
+      btn.innerHTML = '<svg width="11" height="11" viewBox="0 0 14 14" fill="none"><path d="M1 1l12 6-12 6V8.5l9-1.5-9-1.5V1z" fill="currentColor"/></svg> Send';
+    }
+  }
+
+  async function proceedWithSending() {
+    var subj=document.getElementById('subj').value.trim();
+    var body=getBody().trim();
+    var camp=document.getElementById('campaign').value.trim();
+    var btn=document.getElementById('send-btn');
+    btn.disabled=true;
+    var total=S.recipients.length;
+
+    showModal(); updateModal(0,0,total);
+    document.getElementById('prog-wrap').style.display='block';
+    var w=0;
+    var iv=setInterval(function(){
+      var inc=(90-w)*0.07;w+=inc>0.3?inc:0.3;if(w>=90)w=90;
+      var est=Math.floor(w/100*total);
+      updateModal(w,est,total);
+      document.getElementById('prog-fill').style.width=w.toFixed(1)+'%';
+      document.getElementById('prog-pct').textContent=Math.round(w)+'%';
+      document.getElementById('prog-cnt').textContent=est+' / '+total+' emails';
+    },100);
+
+    try {
+      var attachments=await Promise.all(S.selFiles.map(async function(file){return{fileName:file.name,contentType:file.type||'application/octet-stream',base64Content:await readBase64(file)};}));
+      var mails=S.recipients.map(function(to){return{to:to,subject:subj,body:body,html:true,attachments:attachments.length>0?attachments:null};});
+      var response=await fetch('/api/mails/send',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mails:mails,campaignName:camp||null})});
+      var result={};try{result=await response.json();}catch(e){}
+      clearInterval(iv);updateModal(100,total,total);
+      document.getElementById('prog-fill').style.width='100%';
+      setTimeout(function(){
+        hideModal();document.getElementById('prog-wrap').style.display='none';
+        if(response.ok){
+          var sc=result.sentCount!==undefined?result.sentCount:total;
+          var fc=result.failedCount!==undefined?result.failedCount:0;
+          document.getElementById('ok-msg').textContent=sc.toLocaleString()+' email'+(sc!==1?'s':'')+' sent'+(fc>0?', '+fc+' failed':'')+'!';
+          document.getElementById('a-ok').style.display='flex';
+          
+          // Clear recipient list after successful send to prevent double sends
+          S.recipients=[]; renderTags(); updatePill();
+        }else{showErr(result.error||'Server returned '+response.status);}
+        btn.disabled=false;
+      },700);
+    }catch(err){
+      clearInterval(iv);hideModal();document.getElementById('prog-wrap').style.display='none';
+      showErr('Network error: '+(err.message||'unknown'));btn.disabled=false;
+    }
+  }
+  function showErr(m){document.getElementById('err-msg').textContent=m;document.getElementById('a-err').style.display='flex';}
+  function readBase64(file){return new Promise(function(res,rej){var r=new FileReader();r.onload=function(){res(r.result.split(',')[1]);};r.onerror=rej;r.readAsDataURL(file);});}
+
+  /* ═══════════════════════════════════════════════
+     METRICS — uses /api/metrics/summary + /campaigns
+  ═══════════════════════════════════════════════ */
+  async function loadMetrics(){
+    try{
+      var[sumRes,camRes]=await Promise.all([
+        fetch('/api/metrics/summary'),
+        fetch('/api/metrics/campaigns')
+      ]);
+      if(!sumRes.ok||!camRes.ok) throw new Error('HTTP '+sumRes.status);
+      var sum=await sumRes.json();
+      var camps=await camRes.json();
+      renderSummary(sum);
+      renderCampaignList(camps);
+      renderCharts(sum,camps);
+    }catch(e){
+      console.error('loadMetrics error:',e);
+      document.getElementById('camp-list').innerHTML=
+              '<div class="empty-state">⚠️ Could not load metrics — is the server running?<br><small style="color:var(--text3)">'+esc(e.message)+'</small></div>';
+    }
+  }
+
+  function renderSummary(s){
+    set('m-camps',(s.totalCampaigns||0).toLocaleString());
+    set('m-req',(s.totalRequested||0).toLocaleString());
+    set('m-sent',(s.totalSent||0).toLocaleString());
+    set('m-fail',(s.totalFailed||0).toLocaleString());
+    set('m-rate',(s.overallDeliveryRate||0).toFixed(1)+'%');
+  }
+  function set(id,val){var el=document.getElementById(id);if(el)el.textContent=val;}
+
+  function renderCharts(sum,camps){
+    var hasCamps=camps&&camps.length>0;
+    document.getElementById('charts-section').style.display=hasCamps?'grid':'none';
+    if(!hasCamps)return;
+    var dark=S.dark;
+    var gridColor=dark?'rgba(255,255,255,0.06)':'rgba(0,0,0,0.06)';
+    var textColor=dark?'#a0a0b0':'#666';
+    var labels=camps.slice(0,10).reverse().map(function(c){return c.name.length>14?c.name.substr(0,14)+'…':c.name;});
+    var sentData=camps.slice(0,10).reverse().map(function(c){return c.sent;});
+    var failData=camps.slice(0,10).reverse().map(function(c){return c.failed;});
+    if(Charts.bar)Charts.bar.destroy();
+    Charts.bar=new Chart(document.getElementById('bar-chart'),{
+      type:'bar',
+      data:{labels:labels,datasets:[
+          {label:'Delivered',data:sentData,backgroundColor:'rgba(74,144,32,0.75)',borderRadius:4,borderSkipped:false},
+          {label:'Failed',data:failData,backgroundColor:'rgba(192,48,48,0.7)',borderRadius:4,borderSkipped:false}
+        ]},
+      options:{responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{labels:{color:textColor,font:{size:11}}},tooltip:{mode:'index'}},
+        scales:{x:{ticks:{color:textColor,font:{size:10}},grid:{color:gridColor}},y:{ticks:{color:textColor,font:{size:10}},grid:{color:gridColor},beginAtZero:true}}
+      }
+    });
+    if(Charts.pie)Charts.pie.destroy();
+    Charts.pie=new Chart(document.getElementById('pie-chart'),{
+      type:'doughnut',
+      data:{labels:['Delivered','Failed'],datasets:[{data:[sum.totalSent||0,sum.totalFailed||0],backgroundColor:['rgba(74,144,32,0.8)','rgba(192,48,48,0.75)'],borderWidth:0,hoverOffset:6}]},
+      options:{responsive:true,maintainAspectRatio:false,cutout:'68%',
+        plugins:{legend:{position:'bottom',labels:{color:textColor,font:{size:11},padding:14}},
+          tooltip:{callbacks:{label:function(ctx){var tot=ctx.dataset.data.reduce(function(a,b){return a+b;},0);var pct=tot>0?Math.round(ctx.parsed/tot*100):0;return ctx.label+': '+ctx.parsed.toLocaleString()+' ('+pct+'%)';}}}
+        }
+      }
+    });
+  }
+
+  function renderCampaignList(camps){
+    var list=document.getElementById('camp-list');
+    if(!camps||camps.length===0){
+      list.innerHTML='<div class="empty-state">📭 No campaigns yet. Send your first email — metrics appear instantly after each send.</div>';
+      return;
+    }
+    list.innerHTML='';
+    camps.forEach(function(c){
+      var sp=c.unique>0?Math.round(c.sent/c.unique*100):0;
+      var fp=100-sp;
+      var rateCol=sp>=80?'var(--green)':sp>=50?'var(--amber)':'var(--red)';
+      var card=document.createElement('div');card.className='camp-card';
+      card.innerHTML='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">'
+              +'<div style="font-size:13px;font-weight:500;color:var(--text)">'+esc(c.name||'(untitled)')+'</div>'
+              +'<div style="display:flex;align-items:center;gap:8px">'
+              +'<span style="font-size:11px;font-weight:600;color:'+rateCol+'">'+c.deliveryRate.toFixed(1)+'% delivered</span>'
+              +'<span style="font-size:11px;color:var(--text3)">'+esc(c.sentAt||'')+'</span>'
+              +'</div></div>'
+              +'<div style="display:flex;gap:20px;flex-wrap:wrap">'
+              +'<div><div style="font-size:15px;font-weight:500;color:var(--text)">'+(c.requested||0).toLocaleString()+'</div><div style="font-size:10px;color:var(--text3)">Requested</div></div>'
+              +'<div><div style="font-size:15px;font-weight:500;color:var(--text)">'+(c.unique||0).toLocaleString()+'</div><div style="font-size:10px;color:var(--text3)">Unique</div></div>'
+              +'<div><div style="font-size:15px;font-weight:500;color:var(--green)">'+(c.sent||0).toLocaleString()+'</div><div style="font-size:10px;color:var(--text3)">Delivered</div></div>'
+              +'<div><div style="font-size:15px;font-weight:500;color:var(--red)">'+(c.failed||0).toLocaleString()+'</div><div style="font-size:10px;color:var(--text3)">Failed</div></div>'
+              +'</div>'
+              +'<div class="dbar"><div class="dbar-g" style="width:'+sp+'%"></div><div class="dbar-r" style="width:'+fp+'%"></div></div>';
+      if(c.failures&&c.failures.length>0){
+        var det=document.createElement('details');
+        det.style.cssText='margin-top:8px;font-size:11px;color:var(--red);cursor:pointer';
+        var sm=document.createElement('summary');sm.textContent=c.failures.length+' failure'+(c.failures.length!==1?'s':'');det.appendChild(sm);
+        var ul=document.createElement('ul');ul.style.cssText='margin:5px 0 0 14px;color:var(--text2)';
+        c.failures.slice(0,10).forEach(function(f){var li=document.createElement('li');li.textContent=(f.recipient||'')+' — '+(f.reason||'');ul.appendChild(li);});
+        if(c.failures.length>10){var li2=document.createElement('li');li2.style.color='var(--text3)';li2.textContent='… and '+(c.failures.length-10)+' more';ul.appendChild(li2);}
+        det.appendChild(ul);card.appendChild(det);
+      }
+      list.appendChild(card);
+    });
+  }
+
+  window.onload=loadDraft;
 </script>
 </body>
 </html>
