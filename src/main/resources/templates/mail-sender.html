@@ -114,25 +114,13 @@
     .wlc-card{background:var(--surface);border:.5px solid var(--border);border-radius:var(--r-lg);padding:40px 36px;max-width:460px;width:100%;text-align:center;box-shadow:var(--shadow)}
     .wlc-logo{width:56px;height:56px;border-radius:14px;background:var(--accent-bg);display:flex;align-items:center;justify-content:center;margin:0 auto 18px}
     .wlc-logo svg{width:26px;height:26px;color:var(--accent)}
-    .feat-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:22px}
+    .feat-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:22px}
     .feat{background:var(--surface2);border:.5px solid var(--border2);border-radius:var(--r-sm);padding:14px 10px;text-align:left}
     .feat-icon{font-size:18px;margin-bottom:6px}
     .feat-title{font-size:12px;font-weight:500;color:var(--text)}
     .feat-desc{font-size:11px;color:var(--text3);margin-top:2px;line-height:1.4}
     .sender-row{background:var(--surface2);border:.5px solid var(--border2);border-radius:var(--r-sm);padding:12px 14px;display:flex;align-items:center;gap:10px;margin-bottom:18px;text-align:left}
     .avatar{width:34px;height:34px;border-radius:50%;background:#CECBF6;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:#3C3489;flex-shrink:0}
-
-    /* VERIFY PANEL */
-    .verify-panel{background:var(--surface2);border:.5px solid var(--border);border-radius:var(--r);margin:10px 16px;overflow:hidden}
-    .verify-header{padding:10px 14px;border-bottom:.5px solid var(--border);display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none}
-    .verify-body{padding:12px 14px;display:none}
-    .verify-body.open{display:block}
-    .vresult-row{display:grid;grid-template-columns:minmax(0,1fr) 52px 36px 36px 36px 72px;border-bottom:.5px solid var(--border2);font-size:11px}
-    .vresult-row:hover{background:var(--surface2)}
-    .vresult-hdr{display:grid;grid-template-columns:minmax(0,1fr) 52px 36px 36px 36px 72px;background:var(--surface2);border-bottom:.5px solid var(--border);font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--text3)}
-    .vcell{padding:7px 8px;display:flex;align-items:center;min-width:0;overflow:hidden}
-    .score-bar{height:3px;background:var(--border);border-radius:2px;margin-top:2px;overflow:hidden}
-    .score-fill{height:100%;border-radius:2px}
 
     /* METRICS */
     #s-metrics{background:var(--bg)}
@@ -169,57 +157,6 @@
     .bulk-panel{display:none;width:100%;flex-direction:column;gap:6px;padding:4px 0}
     .spinner{display:inline-block;width:13px;height:13px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite}
     @keyframes spin{to{transform:rotate(360deg)}}
-
-    /* VERIFY MODAL STYLE */
-    .verify-modal-box {
-      background: var(--surface);
-      border: .5px solid var(--border);
-      border-radius: var(--r-lg);
-      padding: 24px 28px;
-      width: 680px;
-      max-width: 94vw;
-      max-height: 85vh;
-      box-shadow: var(--shadow);
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-      animation: modalFadeIn 0.25s ease-out;
-    }
-    @keyframes modalFadeIn {
-      from { transform: scale(0.96); opacity: 0; }
-      to { transform: scale(1); opacity: 1; }
-    }
-    .verify-modal-hdr {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      border-bottom: .5px solid var(--border);
-      padding-bottom: 12px;
-    }
-    .verify-modal-title {
-      font-size: 15px;
-      font-weight: 600;
-      color: var(--text);
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-    .verify-modal-body {
-      flex: 1;
-      overflow-y: auto;
-      display: flex;
-      flex-direction: column;
-      gap: 14px;
-      padding-right: 4px;
-    }
-    .verify-modal-ftr {
-      display: flex;
-      align-items: center;
-      justify-content: flex-end;
-      gap: 10px;
-      border-top: .5px solid var(--border);
-      padding-top: 14px;
-    }
   </style>
 </head>
 <body>
@@ -237,65 +174,7 @@
   </div>
 </div>
 
-<!-- VERIFICATION RESULTS MODAL -->
-<div class="modal-overlay" id="verify-modal-overlay">
-  <!-- LOADING CARD -->
-  <div class="verify-loading-box" id="vm-loading-card" style="display:none">
-    <div class="v-loading-title">🛡️ Pre-flight List Verification</div>
-    <div class="v-loading-desc">Running deep syntax, MX record, SMTP mailbox probe, and blacklist checks on your recipients. No emails are sent during this process.</div>
-    <div class="v-prog-bg">
-      <div class="v-prog-fill" id="vm-prog-fill" style="width:0%"></div>
-    </div>
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:2px;font-size:11px">
-      <span id="vm-prog-detail" style="color:var(--text2)">Starting checks...</span>
-      <span id="vm-prog-pct" style="font-weight:600;color:var(--accent)">0%</span>
-    </div>
-  </div>
 
-  <!-- RESULTS CARD -->
-  <div class="verify-modal-box" id="vm-results-card" style="display:none">
-    <div class="verify-modal-hdr">
-      <div class="verify-modal-title">🛡️ Email Verification Results</div>
-      <button class="dark-btn" onclick="closeVerifyModal()" style="border:none;background:transparent;font-size:18px;cursor:pointer;padding:0;color:var(--text2)">×</button>
-    </div>
-    <div class="verify-modal-body">
-      <!-- Warning Banner -->
-      <div id="vm-warn-banner" style="display:none;background:var(--amber-bg);border:.5px solid var(--amber-bd);border-radius:var(--r-sm);padding:10px 12px;font-size:12px;color:var(--amber);line-height:1.5"></div>
-
-      <!-- Explanatory Legend -->
-      <div style="background:var(--surface2);border:.5px solid var(--border);border-radius:var(--r-sm);padding:10px 12px;font-size:11px;color:var(--text2);line-height:1.5;display:grid;grid-template-columns:1fr 1fr;gap:8px 12px">
-        <div><strong>🏆 Score:</strong> Overall deliverability grade from 0 to 100.</div>
-        <div><strong>🌐 MX:</strong> Domain is configured to receive emails.</div>
-        <div><strong>✉️ SMTP:</strong> Server confirmed the mailbox exists.</div>
-        <div><strong>🛡️ BL (Blacklist):</strong> IP/domain is clean of spam records.</div>
-      </div>
-
-      <!-- Stats Grid -->
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;" id="vm-stats-grid"></div>
-
-      <!-- Filter tabs -->
-      <div style="display:flex;gap:2px;background:var(--surface2);border-radius:var(--r-sm);padding:2px;width:fit-content" id="vm-tabs"></div>
-
-      <!-- Table of results -->
-      <div style="display:flex;flex-direction:column;border:.5px solid var(--border);border-radius:var(--r);overflow:hidden">
-        <div class="vresult-hdr">
-          <div class="vcell">Email</div>
-          <div class="vcell" title="Overall deliverability grade from 0 to 100">Score ⓘ</div>
-          <div class="vcell" title="Domain is configured to receive emails (Mail Exchange record exists)">MX ⓘ</div>
-          <div class="vcell" title="The mail server confirmed that this mailbox exists">SMTP ⓘ</div>
-          <div class="vcell" title="The domain and its mail server IP are clean of spam blacklists">BL ⓘ</div>
-          <div class="vcell">Status</div>
-        </div>
-        <div id="vm-rows" style="max-height:200px;overflow-y:auto;background:var(--surface)"></div>
-      </div>
-    </div>
-    <div class="verify-modal-ftr">
-      <button class="btn" id="vm-btn-cancel" onclick="onVerifyModalCancel()" style="margin-right:auto">Cancel Send</button>
-      <button class="btn" id="vm-btn-all" onclick="onVerifyModalAll()" style="color:var(--red);border-color:var(--red-bd)">Send to All anyway</button>
-      <button class="btn btn-primary" id="vm-btn-safe" onclick="onVerifyModalSafe()">Send to Safe Only (Recommended)</button>
-    </div>
-  </div>
-</div>
 
 
 <!-- ══════════════════════════════ WELCOME ══════════════════════════════ -->
@@ -305,19 +184,18 @@
       <svg viewBox="0 0 24 24" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
     </div>
     <div style="font-size:20px;font-weight:600;color:var(--text);margin-bottom:6px">Darwin Office Support</div>
-    <div style="font-size:13px;color:var(--text2);line-height:1.6;margin-bottom:22px">Compose personalised emails to thousands of recipients. Verify lists, attach files, and track every delivery.</div>
+    <div style="font-size:13px;color:var(--text2);line-height:1.6;margin-bottom:22px">Compose personalised emails to thousands of recipients. Attach files, and track every delivery.</div>
 
     <div class="feat-grid">
       <div class="feat"><div class="feat-icon">👥</div><div class="feat-title">Bulk recipients</div><div class="feat-desc">Paste thousands at once</div></div>
-      <div class="feat"><div class="feat-icon">🛡️</div><div class="feat-title">Verification</div><div class="feat-desc">Pre-flight all addresses</div></div>
       <div class="feat"><div class="feat-icon">📊</div><div class="feat-title">Live metrics</div><div class="feat-desc">Charts &amp; history</div></div>
     </div>
 
     <div class="sender-row">
-      <div class="avatar">DC</div>
+      <div class="avatar">JH</div>
       <div style="flex:1">
-        <div style="font-size:13px;font-weight:500;color:var(--text)">Darwin Cox</div>
-        <div style="font-size:11px;color:var(--text3)">cox.darwin@darwin-officesupport.online</div>
+        <div style="font-size:13px;font-weight:500;color:var(--text)">JF Hubert</div>
+        <div style="font-size:11px;color:var(--text3)">ilanda7@1free.fr</div>
       </div>
       <span class="pill pill-ok">● Connected</span>
     </div>
@@ -334,10 +212,10 @@
   <div class="shell-hdr">
     <div style="display:flex;align-items:center;gap:8px">
       <button class="btn btn-sm" onclick="goTo('s-welcome')">← Home</button>
-      <div class="avatar" style="width:28px;height:28px;font-size:10px">DC</div>
+      <div class="avatar" style="width:28px;height:28px;font-size:10px">JH</div>
       <div>
-        <div style="font-size:12px;font-weight:500;color:var(--text)">Darwin Cox</div>
-        <div style="font-size:10px;color:var(--text3)">cox.darwin@darwin-officesupport.online</div>
+        <div style="font-size:12px;font-weight:500;color:var(--text)">JF Hubert</div>
+        <div style="font-size:10px;color:var(--text3)">ilanda7@1free.fr</div>
       </div>
     </div>
     <div style="display:flex;align-items:center;gap:6px">
@@ -369,7 +247,6 @@
         </div>
       </div>
       <div style="display:flex;align-items:center;gap:8px">
-        <button class="btn btn-sm" id="verify-btn" onclick="runVerification()" style="font-size:11px;padding:3px 10px">🛡️ Verify list</button>
         <span style="font-size:11px;color:var(--text3);cursor:pointer;text-decoration:underline" onclick="toggleCcBcc()">Cc / Bcc</span>
       </div>
     </div>
@@ -480,8 +357,6 @@
     selFiles:   [],
     srcMode:    false,
     bulkParsed: [],
-    verifyResults: [],
-    verifyFilter:  'all',
     dark: localStorage.getItem('dark') === '1'
   };
   var Charts = { bar: null, pie: null };
@@ -573,211 +448,7 @@
   }
   function toggleCcBcc(){['cc-row','bcc-row'].forEach(function(id){document.getElementById(id).classList.toggle('hidden');});}
 
-  /* ═══════════════════════════════════════════════
-     VERIFICATION — calls real /api/verify endpoint
-  ═══════════════════════════════════════════════ */
-  /* VERIFICATION & LOADING MODAL LOGIC */
-  var verifyContext = 'verify';
-  var progressInterval = null;
 
-  function startVerificationProgress() {
-    document.getElementById('verify-modal-overlay').classList.add('open');
-    document.getElementById('vm-loading-card').style.display = 'flex';
-    document.getElementById('vm-results-card').style.display = 'none';
-
-    var bar = document.getElementById('vm-prog-fill');
-    var pctText = document.getElementById('vm-prog-pct');
-    var detailText = document.getElementById('vm-prog-detail');
-
-    bar.style.width = '0%';
-    pctText.textContent = '0%';
-    detailText.textContent = 'Analyzing email address syntax...';
-
-    var pct = 0;
-    if (progressInterval) clearInterval(progressInterval);
-
-    progressInterval = setInterval(function() {
-      if (pct < 90) {
-        var inc = (90 - pct) * 0.08;
-        pct += inc > 0.4 ? inc : 0.4;
-        if (pct >= 90) pct = 90;
-
-        bar.style.width = pct.toFixed(0) + '%';
-        pctText.textContent = Math.round(pct) + '%';
-
-        if (pct < 20) {
-          detailText.textContent = 'Analyzing email address syntax...';
-        } else if (pct < 45) {
-          detailText.textContent = 'Resolving domain MX records...';
-        } else if (pct < 70) {
-          detailText.textContent = 'Checking reputations against spam blacklists (DNSBL)...';
-        } else {
-          detailText.textContent = 'Probing mailbox existences (SMTP connection probes)...';
-        }
-      }
-    }, 120);
-  }
-
-  function finishVerificationProgress(callback) {
-    if (progressInterval) clearInterval(progressInterval);
-    var bar = document.getElementById('vm-prog-fill');
-    var pctText = document.getElementById('vm-prog-pct');
-    var detailText = document.getElementById('vm-prog-detail');
-
-    bar.style.width = '100%';
-    pctText.textContent = '100%';
-    detailText.textContent = 'Verification complete!';
-
-    setTimeout(function() {
-      document.getElementById('vm-loading-card').style.display = 'none';
-      document.getElementById('vm-results-card').style.display = 'flex';
-      if (callback) callback();
-    }, 450);
-  }
-
-  async function runVerification() {
-    var all = S.recipients.slice();
-    var typed = document.getElementById('to-input').value.trim();
-    if (typed && typed.indexOf('@')>0) all.push(typed);
-    if (all.length === 0) { showErr('Add at least one recipient before verifying.'); return; }
-
-    var btn = document.getElementById('verify-btn');
-    btn.disabled = true;
-    btn.innerHTML = '<span class="spinner"></span> Verifying…';
-
-    verifyContext = 'verify';
-    startVerificationProgress();
-
-    try {
-      var res = await fetch('/api/verify', {
-        method: 'POST',
-        headers: {'Content-Type':'application/json'},
-        body: JSON.stringify({emails: all})
-      });
-      if (!res.ok) throw new Error('Server error: ' + res.status);
-      var data = await res.json();
-      S.verifyResults = data.results || [];
-      
-      finishVerificationProgress(function() {
-        renderVerifyModalResults(data);
-      });
-    } catch (e) {
-      closeVerifyModal();
-      showErr('Verification failed: ' + e.message);
-    } finally {
-      btn.disabled = false;
-      btn.innerHTML = '🛡️ Verify list';
-    }
-  }
-
-  function closeVerifyModal() {
-    if (progressInterval) clearInterval(progressInterval);
-    document.getElementById('verify-modal-overlay').classList.remove('open');
-  }
-
-  function renderVerifyModalResults(data) {
-    var safe=data.safe, risky=data.risky, invalid=data.invalid, total=data.total;
-    var rate=data.safeRate||0;
-
-    var banner = document.getElementById('vm-warn-banner');
-    if (rate < 60) {
-      banner.style.display = 'block';
-      banner.innerHTML = '⚠️ <strong>Low list quality detected.</strong> Only ' + rate.toFixed(0) + '% of the list is safe. Sending to risky or invalid addresses may block your sender IP.';
-    } else {
-      banner.style.display = 'none';
-    }
-
-    var grid = document.getElementById('vm-stats-grid');
-    grid.innerHTML = [
-      sumCell(safe, 'Safe', 'var(--green)'),
-      sumCell(risky, 'Risky', 'var(--amber)'),
-      sumCell(invalid, 'Invalid', 'var(--red)')
-    ].join('');
-
-    renderVerifyModalTabs('all');
-    renderVerifyModalRows('all');
-
-    var btnCancel = document.getElementById('vm-btn-cancel');
-    var btnAll = document.getElementById('vm-btn-all');
-    var btnSafe = document.getElementById('vm-btn-safe');
-
-    if (verifyContext === 'send') {
-      btnCancel.textContent = 'Cancel Send';
-      btnAll.textContent = 'Send to All anyway';
-      btnSafe.textContent = 'Send to Safe Only (Recommended)';
-    } else {
-      btnCancel.textContent = 'Close';
-      btnAll.textContent = 'Keep All';
-      btnSafe.textContent = 'Use Safe Only';
-    }
-  }
-
-  function sumCell(val, lbl, col) {
-    return '<div style="background:var(--surface2);border:.5px solid var(--border);border-radius:var(--r-sm);padding:10px 12px;text-align:center">'
-            +'<div style="font-size:18px;font-weight:500;color:'+col+'">'+val+'</div>'
-            +'<div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.04em">'+lbl+'</div>'
-            +'</div>';
-  }
-
-  function renderVerifyModalTabs(filter) {
-    var tabs=document.getElementById('vm-tabs');
-    var counts={all:S.verifyResults.length,safe:0,risky:0,invalid:0};
-    S.verifyResults.forEach(function(r){counts[r.status]=(counts[r.status]||0)+1;});
-    tabs.innerHTML=['all','safe','risky','invalid'].map(function(f){
-      var on=f===filter?'on':'';
-      var label=f.charAt(0).toUpperCase()+f.slice(1)+' ('+counts[f]+')';
-      return '<button class="mode-btn '+on+'" onclick="renderVerifyModalTabs(\''+f+'\');renderVerifyModalRows(\''+f+'\')">'+label+'</button>';
-    }).join('');
-  }
-
-  function renderVerifyModalRows(filter) {
-    var filtered=filter==='all'?S.verifyResults:S.verifyResults.filter(function(r){return r.status===filter;});
-    var rows=document.getElementById('vm-rows');
-    rows.innerHTML='';
-    if(!filtered.length){rows.innerHTML='<div style="padding:16px;text-align:center;font-size:12px;color:var(--text3)">No addresses in this category.</div>';return;}
-    filtered.forEach(function(r){
-      var sc=r.score||0;
-      var col=sc>=70?'var(--green)':sc>=40?'var(--amber)':'var(--red)';
-      var pillCls=r.status==='safe'?'pill-ok':r.status==='risky'?'pill-warn':'pill-bad';
-      var row=document.createElement('div');row.className='vresult-row';
-      row.title=r.reasons&&r.reasons.length?r.reasons.join(', '):'All checks passed';
-      row.innerHTML='<div class="vcell" style="flex-direction:column;align-items:flex-start;gap:1px">'
-              +'<span style="font-size:11px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%">'+esc(r.email)+'</span>'
-              +(r.reasons&&r.reasons.length?'<span style="font-size:10px;color:var(--text3)">'+esc(r.reasons[0])+'</span>':'')
-              +'</div>'
-              +'<div class="vcell"><span style="font-size:12px;font-weight:500;color:'+col+'">'+sc+'</span>'
-              +'<div style="width:28px;margin-left:4px"><div class="score-bar"><div class="score-fill" style="width:'+sc+'%;background:'+col+'"></div></div></div></div>'
-              +'<div class="vcell">'+(r.mx?'✓':'✗')+'</div>'
-              +'<div class="vcell">'+(r.smtp?'✓':'✗')+'</div>'
-              +'<div class="vcell">'+(r.blacklist?'✓':'✗')+'</div>'
-              +'<div class="vcell"><span class="pill '+pillCls+'" style="font-size:10px">'+r.status+'</span></div>';
-      rows.appendChild(row);
-    });
-  }
-
-  function onVerifyModalCancel() {
-    closeVerifyModal();
-  }
-
-  function onVerifyModalAll() {
-    closeVerifyModal();
-    if (verifyContext === 'send') {
-      proceedWithSending();
-    }
-  }
-
-  function onVerifyModalSafe() {
-    var safe=(S.verifyResults).filter(function(r){return r.status==='safe';}).map(function(r){return r.email;});
-    S.recipients=safe; renderTags(); updatePill();
-    closeVerifyModal();
-    if (verifyContext === 'send') {
-      if (safe.length === 0) {
-        showErr('No safe recipients remaining to send.');
-        return;
-      }
-      proceedWithSending();
-    }
-  }
 
   /* ═══════════════════════════════════════════════
      EDITOR
@@ -854,41 +525,7 @@
     var body=getBody().trim();
     if(!body){showErr('Email body must not be blank.');return;}
 
-    var btn=document.getElementById('send-btn');
-    btn.disabled=true;
-    btn.innerHTML = '<span class="spinner"></span> Verifying…';
-
-    verifyContext = 'send';
-    startVerificationProgress();
-
-    try {
-      var all = S.recipients.slice();
-      var res = await fetch('/api/verify', {
-        method: 'POST',
-        headers: {'Content-Type':'application/json'},
-        body: JSON.stringify({emails: all})
-      });
-      if (!res.ok) throw new Error('Server error: ' + res.status);
-      var data = await res.json();
-      S.verifyResults = data.results || [];
-
-      var hasIssues = S.verifyResults.some(function(r){ return r.status !== 'safe'; });
-
-      finishVerificationProgress(function() {
-        if (hasIssues) {
-          renderVerifyModalResults(data);
-        } else {
-          closeVerifyModal();
-          proceedWithSending();
-        }
-      });
-    } catch(e) {
-      closeVerifyModal();
-      showErr('Verification failed: ' + e.message);
-    } finally {
-      btn.disabled=false;
-      btn.innerHTML = '<svg width="11" height="11" viewBox="0 0 14 14" fill="none"><path d="M1 1l12 6-12 6V8.5l9-1.5-9-1.5V1z" fill="currentColor"/></svg> Send';
-    }
+    proceedWithSending();
   }
 
   async function proceedWithSending() {
