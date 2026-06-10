@@ -26,7 +26,9 @@ public class SmtpSessionFactory {
         String proto = server.useSsl() ? "smtps" : "smtp";
         Properties props = baseProperties(server, proto);
         applyProxy(server, props, proto);
-        return Session.getInstance(props, authenticator(server.username(), server.password()));
+        Session session = Session.getInstance(props, authenticator(server.username(), server.password()));
+        session.setDebug(false); // never log raw SMTP traffic in production
+        return session;
     }
 
     // ── base properties ──────────────────────────────────────────────────────
@@ -40,6 +42,8 @@ public class SmtpSessionFactory {
         p.put("mail." + proto + ".timeout",           String.valueOf(s.readTimeoutMs()));
         p.put("mail." + proto + ".writetimeout",      String.valueOf(s.writeTimeoutMs()));
         p.put("mail." + proto + ".ehlo",              "true");
+        p.put("mail." + proto + ".allow8bitmime",     "true");  // honour 8BITMIME extension
+        p.put("mail." + proto + ".sendpartial",       "false"); // all-or-nothing per message
         p.put("mail.mime.charset",                    "UTF-8");
         p.put("mail.smtp.ssl.trust",                  "*");
         p.put("mail.smtp.ssl.checkserveridentity",    "false");
