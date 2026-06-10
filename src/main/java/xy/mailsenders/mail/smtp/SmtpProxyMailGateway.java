@@ -184,9 +184,10 @@ public class SmtpProxyMailGateway implements MailGateway {
         props.put("mail." + proto + ".connectiontimeout", String.valueOf(server.connectionTimeoutMs()));
         props.put("mail." + proto + ".timeout",           String.valueOf(server.readTimeoutMs()));
         props.put("mail." + proto + ".writetimeout",      String.valueOf(server.writeTimeoutMs()));
-        props.put("mail." + proto + ".ehlo",    "true");
+        props.put("mail." + proto + ".ehlo",            "true");
+        props.put("mail." + proto + ".allow8bitmime",   "true");  // honour 8BITMIME extension
+        props.put("mail." + proto + ".sendpartial",     "false"); // all-or-nothing per message
         props.put("mail.mime.charset", "UTF-8");
-        props.put("app.mail.smtp.ssl.trust", "*");
         // Hostname verification often fails on STARTTLS too
         props.put("mail.smtp.ssl.checkserveridentity", "false");
         props.put("mail.smtp.ssl.trust", "*");
@@ -218,7 +219,7 @@ public class SmtpProxyMailGateway implements MailGateway {
                 return new PasswordAuthentication(user, pass);
             }
         });
-        session.setDebug(true); // TEMP: remove after confirmed working
+        session.setDebug(false); // never log raw SMTP in production
         return session;
     }
 
