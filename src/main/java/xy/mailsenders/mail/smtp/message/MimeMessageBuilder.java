@@ -14,13 +14,18 @@ import xy.mailsenders.mail.domain.MailPayload;
 import xy.mailsenders.mail.smtp.SmtpProperties;
 
 import java.io.UnsupportedEncodingException;
+import java.text.SimpleDateFormat;
 import java.util.Base64;
 import java.util.Date;
+import java.util.Locale;
+import java.util.TimeZone;
 import java.util.UUID;
 
 
 @Component
 public class MimeMessageBuilder {
+
+    private static final String X_MAILER = "MailSenders/1.0 (Jakarta Mail)";
 
     private final MailSendingProperties mailProps;
     private final SmtpProperties        smtpProps;
@@ -35,10 +40,18 @@ public class MimeMessageBuilder {
 
         MimeMessage msg = new MimeMessage(session);
         setFrom(msg);
+        setReplyTo(msg);
         msg.setRecipients(Message.RecipientType.TO, InternetAddress.parse(payload.getTo().trim()));
         msg.setSubject(payload.getSubject().trim(), "UTF-8");
         msg.setSentDate(new Date());
-        msg.setHeader("Message-ID", generateMessageId());
+
+        // Delivery-critical headers — these help avoid spam classification
+        msg.setHeader("Message-ID",               generateMessageId());
+        msg.setHeader("MIME-Version",              "1.0");
+        msg.setHeader("X-Mailer",                  X_MAILER);
+        msg.setHeader("Precedence",                "bulk");
+        msg.setHeader("Date",                      rfcDate());
+
         setUnsubscribeHeaders(msg);
 
         if (CollectionUtils.isEmpty(payload.getAttachments())) {
@@ -64,6 +77,22 @@ public class MimeMessageBuilder {
         }
     }
 
+    /**
+     * Sets Reply-To to the same From address so replies don't bounce.
+     * A missing Reply-To can increase spam score on some filters.
+     */
+    private void setReplyTo(MimeMessage msg) throws MessagingException, UnsupportedEncodingException {
+        String addr = StringUtils.hasText(mailProps.getFromAddress())
+                ? mailProps.getFromAddress().trim() : smtpProps.getUsername();
+        String name = mailProps.getAnalyticsSenderName();
+        try {
+            InternetAddress replyTo = StringUtils.hasText(name)
+                    ? new InternetAddress(addr, name, "UTF-8")
+                    : new InternetAddress(addr);
+            msg.setReplyTo(new InternetAddress[]{ replyTo });
+        } catch (Exception ignored) { /* non-critical */ }
+    }
+
     private void setUnsubscribeHeaders(MimeMessage msg) throws MessagingException {
         if (StringUtils.hasText(mailProps.getUnsubscribeMailto())) {
             msg.setHeader("List-Unsubscribe",
@@ -72,18 +101,34 @@ public class MimeMessageBuilder {
         }
     }
 
+    /** RFC 2822-compliant date string required by strict spam filters. */
+    private static String rfcDate() {
+        SimpleDateFormat sdf = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss Z", Locale.US);
+        sdf.setTimeZone(TimeZone.getDefault());
+        return sdf.format(new Date());
+    }
+
     private void setBody(MimePart part, MailPayload payload) throws MessagingException {
         if (payload.isHtml()) {
+            // RFC 2046 §5.1.4: the "best" representation comes LAST in multipart/alternative.
+            // Clients prefer the last part (HTML); spam filters reward the plain-text fallback.
             MimeMultipart alt = new MimeMultipart("alternative");
+
+            // Part 1: plain-text fallback (required for deliverability)
             MimeBodyPart text = new MimeBodyPart();
-            text.setText(stripHtml(payload.getBody()), "UTF-8");
+            text.setText(stripHtml(payload.getBody()), "UTF-8", "plain");
+            text.setHeader("Content-Transfer-Encoding", "quoted-printable");
             alt.addBodyPart(text);
+
+            // Part 2: HTML (preferred — rendered by modern clients)
             MimeBodyPart html = new MimeBodyPart();
             html.setContent(payload.getBody(), "text/html; charset=UTF-8");
+            html.setHeader("Content-Transfer-Encoding", "quoted-printable");
             alt.addBodyPart(html);
+
             part.setContent(alt);
         } else {
-            part.setText(payload.getBody(), "UTF-8");
+            part.setText(payload.getBody(), "UTF-8", "plain");
         }
     }
 
@@ -115,7 +160,8 @@ public class MimeMessageBuilder {
         String from = mailProps.getFromAddress();
         String domain = (StringUtils.hasText(from) && from.contains("@"))
                 ? from.substring(from.indexOf('@') + 1) : "mail.local";
-        return "<" + UUID.randomUUID() + "@" + domain + ">";
+        // UUID + timestamp prefix reduces duplicate-detection false positives
+        return "<" + System.currentTimeMillis() + "." + UUID.randomUUID() + "@" + domain + ">";
     }
 
     // ── shared utilities (DRY — single source for whole smtp package) ────────
