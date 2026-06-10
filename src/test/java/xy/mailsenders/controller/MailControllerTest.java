@@ -3,6 +3,7 @@ package xy.mailsenders.controller;
 import org.junit.jupiter.api.Test;
 import xy.mailsenders.mail.api.BulkMailResponse;
 import xy.mailsenders.mail.api.SendMailsRequest;
+import xy.mailsenders.mail.config.MailSendingProperties;
 import xy.mailsenders.mail.domain.BulkMailResult;
 import xy.mailsenders.mail.domain.MailPayload;
 import xy.mailsenders.service.MailService;
@@ -18,7 +19,7 @@ class MailControllerTest {
     @Test
     void send_ShouldDelegateToServiceAndReturnMappedResponse() {
         StubMailService stubMailService = new StubMailService();
-        MailController mailController = new MailController(stubMailService, new xy.mailsenders.service.MetricsService());
+        MailController mailController = new MailController(stubMailService, new xy.mailsenders.service.MetricsService(), new MailSendingProperties());
         SendMailsRequest request = new SendMailsRequest(
                 List.of(new MailPayload("user@example.com", "subject", "body", false)),
                 null
@@ -36,7 +37,7 @@ class MailControllerTest {
 
     @Test
     void onIllegalArgument_ShouldReturnErrorMap() {
-        MailController mailController = new MailController(mails -> null, new xy.mailsenders.service.MetricsService());
+        MailController mailController = new MailController(mails -> null, new xy.mailsenders.service.MetricsService(), new MailSendingProperties());
         Map<String, String> error = mailController.onIllegalArgument(new IllegalArgumentException("bad request"));
         assertEquals("bad request", error.get("error"));
     }
