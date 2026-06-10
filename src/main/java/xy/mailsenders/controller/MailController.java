@@ -4,6 +4,7 @@ import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -11,6 +12,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import xy.mailsenders.mail.api.BulkMailResponse;
 import xy.mailsenders.mail.api.SendMailsRequest;
+import xy.mailsenders.mail.config.MailSendingProperties;
 import xy.mailsenders.mail.domain.BulkMailResult;
 import xy.mailsenders.service.MailService;
 import xy.mailsenders.service.MetricsService;
@@ -23,12 +25,21 @@ import java.util.Map;
 public class MailController {
     private final MailService mailService;
     private final MetricsService metricsService;
+    private final MailSendingProperties mailProps;
 
     @PostMapping("/send")
     public BulkMailResponse send(@Valid @RequestBody SendMailsRequest request) {
         BulkMailResult result = mailService.sendMails(request.getMails());
         metricsService.record(request.getCampaignName(), result);
         return BulkMailResponse.from(result);
+    }
+
+    @GetMapping("/sender")
+    public Map<String, String> getSender() {
+        return Map.of(
+            "email", mailProps.getFromAddress() != null ? mailProps.getFromAddress() : "",
+            "name", mailProps.getAnalyticsSenderName() != null ? mailProps.getAnalyticsSenderName() : ""
+        );
     }
 
     @ExceptionHandler(IllegalArgumentException.class)
