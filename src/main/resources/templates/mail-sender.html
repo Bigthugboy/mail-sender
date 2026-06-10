@@ -192,10 +192,10 @@
     </div>
 
     <div class="sender-row">
-      <div class="avatar">JH</div>
+      <div class="avatar" id="welcome-sender-avatar">JH</div>
       <div style="flex:1">
-        <div style="font-size:13px;font-weight:500;color:var(--text)">JF Hubert</div>
-        <div style="font-size:11px;color:var(--text3)">ilanda7@1free.fr</div>
+        <div style="font-size:13px;font-weight:500;color:var(--text)" id="welcome-sender-name">JF Hubert</div>
+        <div style="font-size:11px;color:var(--text3)" id="welcome-sender-email">ilanda7@1free.fr</div>
       </div>
       <span class="pill pill-ok">● Connected</span>
     </div>
@@ -212,10 +212,10 @@
   <div class="shell-hdr">
     <div style="display:flex;align-items:center;gap:8px">
       <button class="btn btn-sm" onclick="goTo('s-welcome')">← Home</button>
-      <div class="avatar" style="width:28px;height:28px;font-size:10px">JH</div>
+      <div class="avatar" style="width:28px;height:28px;font-size:10px" id="compose-sender-avatar">JH</div>
       <div>
-        <div style="font-size:12px;font-weight:500;color:var(--text)">JF Hubert</div>
-        <div style="font-size:10px;color:var(--text3)">ilanda7@1free.fr</div>
+        <div style="font-size:12px;font-weight:500;color:var(--text)" id="compose-sender-name">JF Hubert</div>
+        <div style="font-size:10px;color:var(--text3)" id="compose-sender-email">ilanda7@1free.fr</div>
       </div>
     </div>
     <div style="display:flex;align-items:center;gap:6px">
@@ -658,7 +658,61 @@
   }
 
 
-  window.onload=loadDraft;
+  async function loadSender() {
+    try {
+      var response = await fetch('/api/mails/sender');
+      if (response.ok) {
+        var data = await response.json();
+        if (data.email) {
+          updateSenderUI(data.name, data.email);
+        }
+      }
+    } catch (e) {
+      console.error('Failed to load sender:', e);
+    }
+  }
+
+  function updateSenderUI(name, email) {
+    var initials = '??';
+    if (name && name.trim()) {
+      var parts = name.trim().split(/\s+/);
+      if (parts.length >= 2) {
+        initials = (parts[0][0] + parts[1][0]).toUpperCase();
+      } else if (parts[0].length >= 2) {
+        initials = parts[0].substring(0, 2).toUpperCase();
+      } else if (parts[0].length > 0) {
+        initials = parts[0][0].toUpperCase();
+      }
+    } else if (email && email.trim()) {
+      var localPart = email.split('@')[0];
+      if (localPart.length >= 2) {
+        initials = localPart.substring(0, 2).toUpperCase();
+      } else if (localPart.length > 0) {
+        initials = localPart[0].toUpperCase();
+      }
+    }
+
+    var wAvatar = document.getElementById('welcome-sender-avatar');
+    var wName = document.getElementById('welcome-sender-name');
+    var wEmail = document.getElementById('welcome-sender-email');
+    var cAvatar = document.getElementById('compose-sender-avatar');
+    var cName = document.getElementById('compose-sender-name');
+    var cEmail = document.getElementById('compose-sender-email');
+
+    if (wAvatar) wAvatar.textContent = initials;
+    if (cAvatar) cAvatar.textContent = initials;
+
+    if (wName) wName.textContent = name || email;
+    if (cName) cName.textContent = name || email;
+
+    if (wEmail) wEmail.textContent = name ? email : '';
+    if (cEmail) cEmail.textContent = name ? email : '';
+  }
+
+  window.onload = function() {
+    loadDraft();
+    loadSender();
+  };
 </script>
 </body>
 </html>
